@@ -1,12 +1,14 @@
-# -----------------------------------------------------------------------------
-# Diffusion-Limited Aggregation: Cell Class
-# creator: jocos
-# created: 09/30/2016
-# modified: 12/13/2016
-# -----------------------------------------------------------------------------
+"""
+GROW: Environment and Cell Classes
+
+author: Tighe Costa
+email: tighe.costa@gmail.com
+created: 2016/09/30
+modified: 2019/07/27
+"""
 
 import numpy as np
-import line_profiler
+# import line_profiler
 
 import random
 import math

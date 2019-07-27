@@ -1,9 +1,13 @@
-# -----------------------------------------------------------------------------
-# Diffusion-Limited Aggregation: 2D Growth Array in Python
-# creator: jocos
-# created: 11/03/2016
-# modified: 12/13/2016
-# -----------------------------------------------------------------------------
+#!/usr/bin/env python3
+
+"""
+GROW: Biologically Inspired Cellular Growth Algorithm
+
+author: Tighe Costa
+email: tighe.costa@gmail.com
+created: 2016/11/03
+modified: 2019/07/27
+"""
 
 import numpy as np
 import sys
