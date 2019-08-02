@@ -1,10 +1,10 @@
 """
-GROW: Environment and Cell Classes
+GROW: Environment and Cell Classes v2
 
 author: Tighe Costa
 email: tighe.costa@gmail.com
 created: 2016/09/30
-modified: 2019/07/27
+modified: 2019/07/29
 """
 
 import numpy as np
@@ -36,11 +36,17 @@ class Environment():
                                    'constant', constant_values=1)
         Environment.width = width
         Environment.height = height
-        Environment.mixRatios = [x/float(sum(mixRatios)) for x in mixRatios]
+        # Environment.mixRatios = [x/float(sum(mixRatios)) for x in mixRatios]
         return
 
     def addSpecies(self, species):
+        # save cell types to environment
         Environment.speciesList = species
+
+        # pull abundance ratios from cell types
+        Environment.mixRatios = [x["abundance"] for x in species]
+        # normalize abundance ratios
+        Environment.mixRatios = [float(i)/sum(Environment.mixRatios) for i in Environment.mixRatios]
 
     def addTissues(self, quantity):
         idy, idx = np.where(Environment.field[2, :, :] > 0)
@@ -56,7 +62,7 @@ class Environment():
                                            p=Environment.mixRatios)
 
                 # create seed cell
-                cell = Cell(species["id"], seed)
+                cell = Cell(Environment.field, species["species"], seed)
 
                 # create tissue
                 Environment.tissuesList.append(
@@ -65,7 +71,7 @@ class Environment():
 
                 # populate field
                 Environment.field[0, seed[1], seed[0]] = n+1
-                Environment.field[1, seed[1], seed[0]] = species["id"]
+                Environment.field[1, seed[1], seed[0]] = species["species"]
 
         return Environment.tissuesList
 
@@ -78,7 +84,7 @@ class Tissue():
         # characteristics
         Tissue.env = environment
         self.age = 0
-        self.species = species["id"]
+        self.species = species["species"]
         self.nCells = len(cells)
         self.center = center
         self.cells = cells
@@ -87,7 +93,6 @@ class Tissue():
         # properties
         self.proliferationRate = species["proliferation rate"]
         self.metabolism = species["metabolism"]
-        self.PCDthreshold = 20
 
     def update(self):
         self.age += 1
@@ -103,6 +108,7 @@ class Tissue():
                     self.divide(cell)
         return
 
+    @profile
     def feed(self, cell):
         # pull available nutrients
         nutrients = self.getNeighbors(Tissue.env.field[2, :, :],
@@ -110,8 +116,10 @@ class Tissue():
 
         # feed if there are nutrients
         if sum(nutrients) > self.metabolism:
+            # Tissue.env.field[2, cell.y-1:cell.y+2, cell.x-1:cell.x+2] += (
+            #     - self.metabolism / float(np.nonzero(nutrients)[0].shape[0]))
             Tissue.env.field[2, cell.y-1:cell.y+2, cell.x-1:cell.x+2] += (
-                - self.metabolism / float(np.nonzero(nutrients)[0].shape[0]))
+                - self.metabolism / float(np.count_nonzero(nutrients)))
         # stop dividing otherwise
         else:
             cell.dividing = False
@@ -143,7 +151,7 @@ class Tissue():
             Tissue.env.field[1, cell.p[1], cell.p[0]] = self.species
 
             self.cells.append(
-                Cell(self.species, (cell.p[0], cell.p[1]))
+                Cell(Tissue.env.field, self.species, (cell.p[0], cell.p[1]))
             )
 
             self.nCells += 1
@@ -271,8 +279,12 @@ class Tissue():
 
 
 class Cell():
+    """
+    Cell class
+    """
 
-    def __init__(self, species, position, dividing=True):
+    # @profile
+    def __init__(self, map, species, position, dividing=True):
         self.species = species
         self.x = position[0]
         self.y = position[1]
@@ -281,6 +293,14 @@ class Cell():
         self.age = 0
         self.health = 10
 
+        # vectorizing locations addition 2019/08/01
+        self.loc = np.zeros(map.shape, dtype=bool)
+        self.loc[..., position[0], position[1]] = 1
+
+        # vectorizing neighbors addition 2019/08/01
+        self.neighbors = np.zeros(map.shape, dtype=bool)
+        self.neighbors[..., position[0]-1:position[0]+2, position[1]-1:position[1]+2] = 1
+        self.neighbors[..., position[0], position[1]] = 0
 
 def normpdf(x, mu, sigma):
     y = []
