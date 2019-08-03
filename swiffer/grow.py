@@ -65,10 +65,8 @@ class Dish():
         # save cell types to dish
         Dish.speciesList = species
 
-        # pull abundance ratios from cell types
-        Dish.mixRatios = [x["abundance"] for x in species]
-        # normalize abundance ratios
-        Dish.mixRatios = [float(i)/sum(Dish.mixRatios) for i in Dish.mixRatios]
+        # pull abundance ratios from cell types and normalize sum to 1
+        Dish.mixRatios = normSum([x["abundance"] for x in species])
 
     def addTissues(self, quantity):
         idy, idx = np.where(Dish.map > 0)
@@ -76,8 +74,9 @@ class Dish():
         for n in range(quantity):
             while True:
                 # generate random seed
-                ind = np.random.randint(0, len(idx))
-                seed = [idx[ind], idy[ind]]
+                # ind = np.random.randint(0, len(idx))
+                # seed = [idx[ind], idy[ind]]
+                seed = [2,2]
 
                 if (Dish.food[seed[1], seed[0]] > 0) and (Dish.map[seed[1], seed[0]] > 0):
                     break
@@ -104,6 +103,9 @@ class Dish():
 class Tissue():
 
     env = []
+    stepDist = np.array([1/np.sqrt(2), 1, 1/np.sqrt(2),
+                         1,            0, 1,
+                         1/np.sqrt(2), 1, 1/np.sqrt(2)])
 
     def __init__(self, environment, species, cells, center, index):
         # characteristics
@@ -118,6 +120,7 @@ class Tissue():
         # properties
         self.proliferationRate = species["proliferation rate"]
         self.metabolism = species["metabolism"]
+        self.divThresh = species["food to divide"]
 
     @profile
     def update(self):
@@ -130,6 +133,9 @@ class Tissue():
             for cell in list(self.cells):
                 self.feed(cell)
                 cell.age += 1
+                # TODO: implement some way of waiting for food threshold before
+                # diving cell, maybe like below
+                # if cell.dividing and cell.food > self.divThresh:
                 if cell.dividing:
                     self.divide(cell)
         return
@@ -153,6 +159,9 @@ class Tissue():
             # take bite out of cells
             Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite.reshape(3,3)
 
+            # add to cell's food
+            cell.food += self.metabolism
+
         # stop dividing otherwise
         else:
             cell.dividing = False
@@ -163,22 +172,10 @@ class Tissue():
         """
         Spawn new cell.
         """
-        # choose best location to spawn new cell
-        self.step(cell)
-
-        if (Dish.links[cell.p[1], cell.p[0]] != 0).all():
-            # self.reset()
-            return
-
-        status = self.alone(cell)
-
-        # if along edge
-        if status[0] == "along edge":
-            cell.dividing = False
-            return
+        status = self.getNextAction(cell)
 
         # if next to a cell of the same tissue
-        elif status[0] == "grow tissue":
+        if status[0] == "grow tissue":
             Dish.links[cell.p[1], cell.p[0]] = self.index
             Dish.species[cell.p[1], cell.p[0]] = self.species
 
@@ -245,23 +242,18 @@ class Tissue():
 
         # get available nutrients (including current location)
         nutrients = getneighbors(Dish.food, cell.x, cell.y, 1, True)
+        # get valid locations
+        validSpaces = getneighbors(Dish.map, cell.x, cell.y, 1, True)
+        # get unoccupied locations
+        openSpaces = getneighbors(Dish.species, cell.x, cell.y, 1, True)
 
-        # get available locations
-        spaces = getneighbors(Dish.species, cell.x, cell.y, 1, True)
-
-        # get nutrients at unoccupied spaces
-        moves = nutrients*(spaces==0)
-
-        # debug space finding
-        # print(nutrients.astype(int))
-        # print(spaces.astype(int))
-        # print(moves.astype(int))
-        # print()
+        # nutrients at unoccupied spaces
+        moves = nutrients*(validSpaces==1)*(openSpaces==0)
 
         # stop dividing if no moves
         if not np.any(moves):
             cell.dividing = False
-            return
+            return ("no moves",)
 
         # but if there are moves...
         # find best moves
@@ -269,7 +261,8 @@ class Tissue():
 
         # if multiple instances of max value, randomly choose one
         if bestMoves.size > 1:
-            indx = np.random.choice(bestMoves)
+            distWeight = normSum(self.stepDist[bestMoves])
+            indx = np.random.choice(bestMoves, p=distWeight)
         else:
             indx = bestMoves[0]
 
@@ -278,9 +271,11 @@ class Tissue():
         # subtracts [1,1] to adjust coordinate frame to center
         delta = np.unravel_index(indx, (3,3)) - np.array((1,1))
 
+        # print(delta)
+
         cell.p = [cell.x + delta[1], cell.y + delta[0]]
 
-        return
+        return ("moves",)
 
     def updateCenter(self):
         idy, idx = np.where(Dish.links == self.index)
@@ -296,8 +291,13 @@ class Tissue():
 
         return
 
-    def alone(self, cell):
-        # if along edge, alone
+    def getNextAction(self, cell):
+        status = self.step(cell)
+
+        if status[0] == "no moves":
+            return ("no moves",)
+
+        # if along edge, alone)
         if Dish.map[cell.p[1], cell.p[0]] == 0:
             return ("along edge",)
 
@@ -346,8 +346,9 @@ class Cell():
         self.x = position[0]
         self.y = position[1]
         self.dividing = dividing
-        self.p = [-1, -1]
+        self.p = [float('NaN'),float('NaN')]
         self.age = 0
+        self.food = 0
         self.health = 10
 
         # vectorizing locations addition 2019/08/01
