@@ -49,8 +49,8 @@ def main():
     width = 160                            # environment width
     height = 160                           # environment height
     maxIter = 250                           # timeout iterations
-    seeds = 10                            # number of seed cells
-    foodFile = "../_food/foodMaps-04.png"      # food map file name
+    seeds = 1                            # number of seed cells
+    foodFile = "../_food/foodMaps-00.png"      # food map file name
     mixRatios = [1, 1, 1]                   # species probability ratios
     cellTypes = [                             # species properties
         {
@@ -59,12 +59,12 @@ def main():
          "metabolism": 100,
          "abundance": 1
         },
-        {
-         "species": 2,
-         "proliferation rate": 1,
-         "metabolism": 20,
-         "abundance": 1
-        }
+        # {
+        #  "species": 2,
+        #  "proliferation rate": 1,
+        #  "metabolism": 20,
+        #  "abundance": 1
+        # }
     ]
     outputSize = (800, 800)
     # -------------------------------------------------------------------------

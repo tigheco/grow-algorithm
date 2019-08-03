@@ -137,7 +137,8 @@ class Tissue():
     def feed(self, cell):
         """
         Consume nutrients from location and neighbors in proportion to
-        availability
+        availability.
+
         TODO: make consumption proportional to distance too
         """
         # pull available nutrients
@@ -145,7 +146,6 @@ class Tissue():
 
         # feed if there are nutrients
         if sum(nutrients) > self.metabolism:
-            # new bite calculation 2019/08/03
             # ignore spots with nutrients < 0
             nutrients[nutrients < 0] = 0
             # distribute metabolism proportional to available food
@@ -157,7 +157,13 @@ class Tissue():
         else:
             cell.dividing = False
 
+        return
+
     def divide(self, cell):
+        """
+        Spawn new cell.
+        """
+        # choose best location to spawn new cell
         self.step(cell)
 
         if (Dish.links[cell.p[1], cell.p[0]] != 0).all():
@@ -216,6 +222,8 @@ class Tissue():
         # delete other tissue
         Dish.tissuesList.remove(tissue)
 
+        return
+
     def reset(self):
         # randomly choose a cell of your Tissue
         return np.random.choice(self.cells)
@@ -237,14 +245,12 @@ class Tissue():
 
         # get available nutrients (including current location)
         nutrients = getneighbors(Dish.food, cell.x, cell.y, 1, True)
-        # # exclude food at current location
-        # nutrients[4] = 0
 
         # get available locations
         spaces = getneighbors(Dish.species, cell.x, cell.y, 1, True)
 
         # get nutrients at unoccupied spaces
-        moves = nutrients*(1.0-spaces)
+        moves = nutrients*(spaces==0)
 
         # debug space finding
         # print(nutrients.astype(int))
