@@ -14,8 +14,7 @@ import sys
 import imageio
 from PIL import Image
 
-from cell_v2 import Environment, Tissue
-
+import cell_v2
 
 def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     # build food map from file
@@ -25,7 +24,7 @@ def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     food = np.reshape(np.array(list(img.getdata())), (height, width))
 
     # initialize environment
-    env = Environment(width, height, food, mixRatios)
+    env = cell_v2.Environment(width, height, food, mixRatios)
     env.addSpecies(cellTypes)
 
     # initialize tissues

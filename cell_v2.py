@@ -17,6 +17,8 @@ import copy
 
 from PIL import Image
 
+def test():
+    print("test")
 
 class Environment():
 
@@ -111,15 +113,17 @@ class Tissue():
     @profile
     def feed(self, cell):
         # pull available nutrients
-        nutrients = self.getNeighbors(Tissue.env.field[2, :, :],
-                                      cell.x, cell.y, 1, True)
+        nutrients = self.getNeighbors(Tissue.env.field[2, :, :], cell.x, cell.y, 1, True)
 
         # feed if there are nutrients
         if sum(nutrients) > self.metabolism:
+            # ~30us per iteration 2019/08/01
             # Tissue.env.field[2, cell.y-1:cell.y+2, cell.x-1:cell.x+2] += (
             #     - self.metabolism / float(np.nonzero(nutrients)[0].shape[0]))
-            Tissue.env.field[2, cell.y-1:cell.y+2, cell.x-1:cell.x+2] += (
-                - self.metabolism / float(np.count_nonzero(nutrients)))
+
+            # ~20us per iteration 2019/08/01
+            bite = self.metabolism / float(np.count_nonzero(nutrients))
+            Tissue.env.field[2, cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
         # stop dividing otherwise
         else:
             cell.dividing = False
@@ -263,11 +267,18 @@ class Tissue():
         return ("no growth",)
 
     def getNeighbors(self, field, cx, cy, r, includeCenter=False):
-        subsample = field[cy-r:cy+r+1, cx-r:cx+r+1].ravel().tolist()
-        if not includeCenter:
-            mid_idx = int(len(subsample)/2)
-            subsample = subsample[:mid_idx] + subsample[mid_idx+1:]
-        return subsample
+        """
+        Returns values of neighbors in field of location cx, cy as 1D numpy
+        array. Removes value of location if includeCenter=False.
+        """
+        subsample = field[cy-r:cy+r+1, cx-r:cx+r+1].ravel()
+
+        if includeCenter:
+            # do nothing
+            return subsample
+        else:
+            # pop out field[cx, cy] value
+            return np.delete(subsample, int(len(subsample)/2))
 
     def draw(self, field):
         img = Image.new('L', field.shape)
@@ -300,7 +311,7 @@ class Cell():
         # vectorizing neighbors addition 2019/08/01
         self.neighbors = np.zeros(map.shape, dtype=bool)
         self.neighbors[..., position[0]-1:position[0]+2, position[1]-1:position[1]+2] = 1
-        self.neighbors[..., position[0], position[1]] = 0
+        # self.neighbors[..., position[0], position[1]] = 0
 
 def normpdf(x, mu, sigma):
     y = []
