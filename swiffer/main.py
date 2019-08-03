@@ -48,24 +48,25 @@ def main():
     # user controls
     width = 160                            # environment width
     height = 160                           # environment height
-    maxIter = 100                          # timeout iterations
-    seeds = 1                            # number of seed cells
-    foodFile = "../_food/foodMaps-00.png"      # food map file name
+    maxIter = 500                          # timeout iterations
+    seeds = 25                            # number of seed cells
+    foodFile = "../_food/foodMaps-04.png"      # food map file name
     mixRatios = [1, 1, 1]                   # species probability ratios
     cellTypes = [                             # species properties
         {
          "species": 1,
          "proliferation rate": 1,
-         "metabolism": 20,
+         "metabolism": 100,
          "abundance": 1,
          "food to divide": 100
         },
-        # {
-        #  "species": 2,
-        #  "proliferation rate": 1,
-        #  "metabolism": 20,
-        #  "abundance": 1
-        # }
+        {
+         "species": 2,
+         "proliferation rate": 1,
+         "metabolism": 20,
+         "abundance": 1,
+         "food to divide": 100
+        }
     ]
     outputSize = (800, 800)
     # -------------------------------------------------------------------------
@@ -99,9 +100,9 @@ def main():
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
 
-        # if (env.links == prevField).all():
-        #     print("\nConverged to steady state. Terminating growth.")
-        #     break
+        if (env.links == prevField).all():
+            print("\nConverged to steady state in %i iterations. Terminating growth." % i)
+            break
 
         if i == maxIter-1:
             print("\nComplete.")

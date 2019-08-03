@@ -74,9 +74,8 @@ class Dish():
         for n in range(quantity):
             while True:
                 # generate random seed
-                # ind = np.random.randint(0, len(idx))
-                # seed = [idx[ind], idy[ind]]
-                seed = [2,2]
+                ind = np.random.randint(0, len(idx))
+                seed = [idx[ind], idy[ind]]
 
                 if (Dish.food[seed[1], seed[0]] > 0) and (Dish.map[seed[1], seed[0]] > 0):
                     break
@@ -302,10 +301,8 @@ class Tissue():
             return ("along edge",)
 
         # pull neighbors
-        neighborsT = getneighbors(Dish.links,
-                                       cell.p[0], cell.p[1], 1)
-        neighborsS = getneighbors(Dish.species,
-                                       cell.p[0], cell.p[1], 1)
+        neighborsT = getneighbors(Dish.links, cell.p[0], cell.p[1], 1)
+        neighborsS = getneighbors(Dish.species, cell.p[0], cell.p[1], 1)
 
         # check neighbors tissue
         likeT = [x for x in neighborsT if x == self.index]
@@ -315,16 +312,12 @@ class Tissue():
         likeS = [x for x in neighborsS if x == self.species]
         unlikeS = [x for x in neighborsS if x != 0 and x != self.species]
 
-        # pull available nutrients
-        nutrients = getneighbors(Dish.food,
-                                      cell.x, cell.y, 1, True)
-
         # if a neighbor is of the same tissue
-        if len(likeT) > 0 and len(unlikeT) == 0 and sum(nutrients) > 0:
+        if len(likeT) > 0 and len(unlikeT) == 0:
             return ("grow tissue",)
 
         # if a neighbor is of the same species
-        elif len(likeS) > 0 and len(unlikeS) == 0 and sum(nutrients) > 0:
+        elif len(likeS) > 0 and len(unlikeS) == 0:
 
             index = unlikeT[0]
 
