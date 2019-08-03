@@ -9,6 +9,8 @@ email: tighe.costa@gmail.com
 
 import numpy as np
 import sys
+
+import cv2
 import imageio
 from PIL import Image
 
@@ -16,7 +18,7 @@ import grow
 
 def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     # initialize environment
-    food = Image.open(foodFile)
+    food = cv2.imread(foodFile, cv2.IMREAD_GRAYSCALE)
     env = grow.Dish(width, height, food, mixRatios)
     env.addSpecies(cellTypes)
 
@@ -27,8 +29,11 @@ def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
 
 
 def draw(frames, fileName, fieldSize, dispSize):
-    # TODO (Tighe) scale fieldSize to dispSize using np.kron
-    imageio.mimwrite(fileName, frames, macro_block_size=16, fps=30)
+    outFrames = []
+    for frame in frames:
+        outFrames.append(cv2.resize(frame, dispSize))
+
+    imageio.mimwrite(fileName, outFrames, macro_block_size=16, fps=30, quality=8)
 
     return
 
@@ -43,30 +48,25 @@ def main():
     # user controls
     width = 160                            # environment width
     height = 160                           # environment height
-    maxIter = 100                           # timeout iterations
-    seeds = 4                              # number of seed cells
+    maxIter = 250                           # timeout iterations
+    seeds = 10                            # number of seed cells
     foodFile = "../_food/foodMaps-04.png"      # food map file name
     mixRatios = [1, 1, 1]                   # species probability ratios
     cellTypes = [                             # species properties
         {
          "species": 1,
-         "proliferation rate": 3,
-         "metabolism": 2,
+         "proliferation rate": 1,
+         "metabolism": 100,
          "abundance": 1
         },
         {
          "species": 2,
-         "proliferation rate": 3,
-         "metabolism": 2,
-         "abundance": 1
-        },
-        {
-         "species": 3,
-         "proliferation rate": 3,
-         "metabolism": 2,
+         "proliferation rate": 1,
+         "metabolism": 20,
          "abundance": 1
         }
     ]
+    outputSize = (800, 800)
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
@@ -80,16 +80,16 @@ def main():
     framesN = []
     framesSi = []
     for i in range(maxIter):
-        prevField = env.map.copy()
+        prevField = env.links.copy()
 
-        if i % 1 is 0:
-            framesT.append(
-                (env.links*255/len(env.tissuesList)).astype("uint8"))
-            framesS.append(
-                (env.map*255/len(cellTypes)).astype("uint8"))
-            framesN.append(
-                (np.maximum(env.food*255/100,
-                            np.zeros((height, width)))).astype("uint8"))
+        # if i % 1 is 0:
+        framesT.append(
+            (env.links*255/len(env.tissuesList)).astype("uint8"))
+        framesS.append(
+            (env.species*255/len(cellTypes)).astype("uint8"))
+        framesN.append(
+            (np.maximum(env.food*255/100,
+                        np.zeros((height, width)))).astype("uint8"))
 
         for tissue in tissues:
             tissue.update()
@@ -98,7 +98,7 @@ def main():
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
 
-        if (env.map == prevField).all():
+        if (env.links == prevField).all():
             print("\nConverged to steady state. Terminating growth.")
             break
 
@@ -107,9 +107,9 @@ def main():
 
     print("\n[3/3] Saving...")
 
-    draw(framesT, "tissues.mp4", (width, height), (1600, 1600))
-    draw(framesS, "species.mp4", (width, height), (1600, 1600))
-    draw(framesN, "nutrients.mp4", (width, height), (1600, 1600))
+    draw(framesT, "tissues.mp4", (width, height), outputSize)
+    draw(framesS, "species.mp4", (width, height), outputSize)
+    draw(framesN, "nutrients.mp4", (width, height), outputSize)
 
     print("Complete.")
 
