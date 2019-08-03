@@ -1,7 +1,10 @@
-food/
-*mp4
+# input images
+_food/
 
+# algorithm outputs
+*mp4
+*.lprof
+
+# Python 3 binaries
 __pycache__/
 *.pyc
-
-*.lprof

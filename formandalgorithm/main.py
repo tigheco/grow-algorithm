@@ -14,7 +14,7 @@ import sys
 import imageio
 from PIL import Image
 
-import cell_v2
+import grow
 
 def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     # build food map from file
@@ -24,7 +24,7 @@ def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     food = np.reshape(np.array(list(img.getdata())), (height, width))
 
     # initialize environment
-    env = cell_v2.Environment(width, height, food, mixRatios)
+    env = grow.Environment(width, height, food, mixRatios)
     env.addSpecies(cellTypes)
 
     # initialize tissues
@@ -52,7 +52,7 @@ def main():
     height = 160                           # environment height
     maxIter = 100                           # timeout iterations
     seeds = 4                              # number of seed cells
-    foodFile = "food/foodMaps-04.png"      # food map file name
+    foodFile = "../_food/foodMaps-04.png"      # food map file name
     mixRatios = [1, 1, 1]                   # species probability ratios
     cellTypes = [                             # species properties
         {
