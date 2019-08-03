@@ -5,8 +5,6 @@ GROW: Biologically Inspired Cellular Growth Algorithm
 
 author: Tighe Costa
 email: tighe.costa@gmail.com
-created: 2016/11/03
-modified: 2019/07/27
 """
 
 import numpy as np
@@ -17,14 +15,9 @@ from PIL import Image
 import grow
 
 def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
-    # build food map from file
-    img = Image.open(foodFile)
-    img = img.convert(mode="L")
-    img = img.resize((width, height), resample=Image.BILINEAR)
-    food = np.reshape(np.array(list(img.getdata())), (height, width))
-
     # initialize environment
-    env = grow.Environment(width, height, food, mixRatios)
+    food = Image.open(foodFile)
+    env = grow.Dish(width, height, food, mixRatios)
     env.addSpecies(cellTypes)
 
     # initialize tissues
@@ -87,18 +80,16 @@ def main():
     framesN = []
     framesSi = []
     for i in range(maxIter):
-        prevField = env.field[1,:,:].copy()
+        prevField = env.map.copy()
 
         if i % 1 is 0:
             framesT.append(
-                (env.field[0,:,:]*255/len(env.tissuesList)).astype("uint8"))
+                (env.links*255/len(env.tissuesList)).astype("uint8"))
             framesS.append(
-                (env.field[1,:,:]*255/len(cellTypes)).astype("uint8"))
+                (env.map*255/len(cellTypes)).astype("uint8"))
             framesN.append(
-                (np.maximum(env.field[2,:,:]*255/100,
+                (np.maximum(env.food*255/100,
                             np.zeros((height, width)))).astype("uint8"))
-            # framesSi.append(
-            #     (-env.field[1, 3:-3, 3:-3]*255/len(cellTypes) + 255).astype("uint8"))
 
         for tissue in tissues:
             tissue.update()
@@ -107,7 +98,7 @@ def main():
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
 
-        if (env.field[1,:,:] == prevField).all():
+        if (env.map == prevField).all():
             print("\nConverged to steady state. Terminating growth.")
             break
 
@@ -119,7 +110,6 @@ def main():
     draw(framesT, "tissues.mp4", (width, height), (1600, 1600))
     draw(framesS, "species.mp4", (width, height), (1600, 1600))
     draw(framesN, "nutrients.mp4", (width, height), (1600, 1600))
-    # draw(framesSi, 'speciesi.mp4', (width, height), (1920, 1080))
 
     print("Complete.")
 
