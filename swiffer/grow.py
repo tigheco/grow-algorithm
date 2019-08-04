@@ -6,6 +6,7 @@ email: tighe.costa@gmail.com
 """
 
 import numpy as np
+import scipy.signal as sig
 import scipy.stats as st
 import line_profiler
 
@@ -27,16 +28,20 @@ class Dish():
     links keeps track of where cells are by connection
     """
 
-    map = []                # map of space (1 = valid, 0 = invalid)
-    species = []            # map of cell types
-    food = []               # map of available nutrients
-    links = []              # map of cell connections
+    map = []                    # map of space (1 = valid, 0 = invalid)
+    species = []                # map of cell types
+    food = []                   # map of nutrients at each location
+    links = []                  # map of cell connections
 
-    width = []              # field width
-    height = []             # field height
-    speciesList = []        # species list
-    tissuesList = []        # tissues list
-    mixRatios = []          # mix ratios
+    foodSums = []               # map of nutrients within reach of each location
+    biteR = 3                   # radius of bite
+    biteKern = np.ones((2*biteR+1,2*biteR+1))   # kernel defining reach of a bite
+
+    width = []                  # field width
+    height = []                 # field height
+    speciesList = []            # species list
+    tissuesList = []            # tissues list
+    mixRatios = []              # mix ratios
 
     def __init__(self, width, height, foodImg, mixRatios):
         # initialize space map
@@ -51,6 +56,9 @@ class Dish():
         # build food map from file
         foodImg = cv2.resize(foodImg, (width, height))
         Dish.food = foodImg / 255.0 * 100
+
+        # build food within reach map from file
+        Dish.foodSums = sig.convolve(Dish.food.copy(), Dish.biteKern)
 
         # initialize links map
         Dish.links = np.zeros((height, width), dtype=np.int8)
@@ -154,9 +162,16 @@ class Tissue():
             # ignore spots with nutrients < 0
             nutrients[nutrients < 0] = 0
             # distribute metabolism proportional to available food
-            bite = self.metabolism * normSum(nutrients)
-            # take bite out of cells
-            Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite.reshape(3,3)
+            bite = (self.metabolism * normSum(nutrients)).reshape(3,3)
+            # take bite out of food
+            Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
+
+            # take bite out of foodSums
+            # biteSums = sig.convolve(bite, Dish.biteKern)
+            #
+            # r = Dish.biteR
+            #
+            # Dish.foodSums[cell.y-r-1:cell.y+r+2, cell.x-r-1:cell.x+r+2] += -biteSums
 
             # add to cell's food
             cell.food += self.metabolism
@@ -239,7 +254,10 @@ class Tissue():
         #         cell.p = p
         #         break
 
-        # get available nutrients (including current location)
+        # get available nutrients
+        # nutrients = getneighbors(Dish.foodSums,
+        #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
+        #                          1, True)
         nutrients = getneighbors(Dish.food, cell.x, cell.y, 1, True)
         # get valid locations
         validSpaces = getneighbors(Dish.map, cell.x, cell.y, 1, True)
@@ -255,13 +273,16 @@ class Tissue():
             return ("no moves",)
 
         # but if there are moves...
+
+        # weight moves by relative distance
+        dists = gkern(3, 1).ravel()
+
         # find best moves
-        bestMoves = np.where(moves == np.amax(moves))[0]
+        bestMoves = np.where(moves*dists == np.amax(moves*dists))[0]
 
         # if multiple instances of max value, randomly choose one
         if bestMoves.size > 1:
-            distWeight = normSum(self.stepDist[bestMoves])
-            indx = np.random.choice(bestMoves, p=distWeight)
+            indx = np.random.choice(bestMoves)
         else:
             indx = bestMoves[0]
 
@@ -269,8 +290,6 @@ class Tissue():
         # unravels to find [i,j] position in neighbors
         # subtracts [1,1] to adjust coordinate frame to center
         delta = np.unravel_index(indx, (3,3)) - np.array((1,1))
-
-        # print(delta)
 
         cell.p = [cell.x + delta[1], cell.y + delta[0]]
 

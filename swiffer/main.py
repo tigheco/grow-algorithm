@@ -48,25 +48,25 @@ def main():
     # user controls
     width = 160                            # environment width
     height = 160                           # environment height
-    maxIter = 500                          # timeout iterations
-    seeds = 25                            # number of seed cells
-    foodFile = "../_food/foodMaps-04.png"      # food map file name
+    maxIter = 100                          # timeout iterations
+    seeds = 1                            # number of seed cells
+    foodFile = "../_food/foodMaps-00.png"      # food map file name
     mixRatios = [1, 1, 1]                   # species probability ratios
     cellTypes = [                             # species properties
         {
          "species": 1,
          "proliferation rate": 1,
-         "metabolism": 100,
+         "metabolism": 50,
          "abundance": 1,
          "food to divide": 100
         },
-        {
-         "species": 2,
-         "proliferation rate": 1,
-         "metabolism": 20,
-         "abundance": 1,
-         "food to divide": 100
-        }
+        # {
+        #  "species": 2,
+        #  "proliferation rate": 1,
+        #  "metabolism": 100,
+        #  "abundance": 1,
+        #  "food to divide": 100
+        # }
     ]
     outputSize = (800, 800)
     # -------------------------------------------------------------------------
@@ -77,21 +77,24 @@ def main():
     print("Complete.")
 
     print("\n[2/3] Growing...")
-    framesS = []
-    framesT = []
-    framesN = []
-    framesSi = []
+    framesSpecies = []
+    framesLinks = []
+    framesFood = []
+    framesFoodSums = []
     for i in range(maxIter):
         prevField = env.links.copy()
 
         # if i % 1 is 0:
-        framesT.append(
+        framesLinks.append(
             (env.links*255/len(env.tissuesList)).astype("uint8"))
-        framesS.append(
+        framesSpecies.append(
             (env.species*255/len(cellTypes)).astype("uint8"))
-        framesN.append(
+        framesFood.append(
             (np.maximum(env.food*255/100,
                         np.zeros((height, width)))).astype("uint8"))
+        framesFoodSums.append(
+            (np.maximum(env.foodSums*255/4900,
+                        np.zeros((height+6, width+6)))).astype("uint8"))
 
         for tissue in tissues:
             tissue.update()
@@ -109,9 +112,10 @@ def main():
 
     print("\n[3/3] Saving...")
 
-    draw(framesT, "tissues.mp4", (width, height), outputSize)
-    draw(framesS, "species.mp4", (width, height), outputSize)
-    draw(framesN, "nutrients.mp4", (width, height), outputSize)
+    draw(framesLinks, "tissues.mp4", (width, height), outputSize)
+    draw(framesSpecies, "species.mp4", (width, height), outputSize)
+    draw(framesFood, "nutrients.mp4", (width, height), outputSize)
+    draw(framesFoodSums, "nutrientSums.mp4", (width+2, height+2), outputSize)
 
     print("Complete.")
 
