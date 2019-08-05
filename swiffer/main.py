@@ -47,11 +47,11 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 500                                 # environment width
-    height = 500                                # environment height
-    maxIter = 250                               # timeout iterations
+    width = int(1280/2)                             # environment width
+    height = int(720/2)                            # environment height
+    maxIter = 1000                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
-    foodFile = "../_food/foodMaps-06.png"       # food map file name
+    foodFile = "../_food/title-01.png"          # food map file name
     mixRatios = [1, 1]                          # species probability ratios
     cellTypes = [                               # species properties
         {
@@ -71,7 +71,7 @@ def main():
          "division recovery time": 5
         }
     ]
-    outputSize = (800, 800)
+    outputSize = (1280, 720)
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")

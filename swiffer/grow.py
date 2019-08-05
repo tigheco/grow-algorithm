@@ -18,6 +18,12 @@ import copy
 
 from PIL import Image
 
+
+indices = np.array([[[0,0], [0,1], [0,2]],
+                    [[1,0], [1,1], [1,2]],
+                    [[2,0], [2,1], [2,2]]])
+
+
 class Dish():
     """
     Everything happens in the dish.
@@ -135,6 +141,9 @@ class Tissue():
         for rate in range(self.proliferationRate):
             # update cells
             for cell in list(self.cells):
+                # feed the cell
+                self.feed(cell)
+
                 # continue to next cell if done dividing
                 if cell.done is True:
                     continue
@@ -149,9 +158,6 @@ class Tissue():
 
                 # but once its done resting do some stuff
                 else:
-                    # feed the cell
-                    self.feed(cell)
-
                     # divide if possible
                     if cell.food > self.divThresh:
                         self.divide(cell)
@@ -173,11 +179,12 @@ class Tissue():
         nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
 
         # feed if there are nutrients
-        if sum(nutrients) > self.metabolism:
+        if np.sum(nutrients) > self.metabolism:
             # ignore spots with nutrients < 0
             nutrients[nutrients < 0] = 0
             # distribute metabolism proportional to available food
-            bite = (self.metabolism * normSum(nutrients)).reshape(3,3)
+            # bite = (self.metabolism * normSum(nutrients)).reshape(3,3)
+            bite = self.metabolism * normSum(nutrients)
             # take bite out of food
             Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
 
@@ -188,10 +195,6 @@ class Tissue():
 
             # add to cell's food
             cell.food += self.metabolism
-
-        # stop dividing otherwise
-        else:
-            cell.dividing = False
 
         return
 
@@ -313,13 +316,14 @@ class Tissue():
         full_spaces = get_neighbors(Dish.species, cell.x, cell.y, 1, True)
         # include center location if move is not forced
         if forceMove is False:
-            full_spaces[4] = 0
+            # full_spaces[4] = 0
+            full_spaces[1,1] = 0
 
         spaces = np.logical_and(valid_spaces==1, full_spaces==0)
 
         # nan if there are no possible steps
         if not np.any(spaces):
-            delta = np.array([np.nan, np.nan])
+            delta = [np.nan, np.nan]
 
         # best step otherwise
         else:
@@ -336,20 +340,15 @@ class Tissue():
             steps = nutrients*spaces
 
             # find steps with the most food
-            best_steps = np.where(steps == max(steps))[0]
+            # gets array indices for steps with max food
+            # translates absolute steps to steps relative to center with -1
+            best_steps = indices[steps == np.max(steps)] - 1
 
-            # get index of best step
-            # randomly choose if some steps are tied for best
-            if best_steps.size > 1:
-                indx = np.random.choice(best_steps)
-            # otherwise return best step
+            # if multiple options
+            if len(best_steps) > 1:
+                delta = random.choice(best_steps)
             else:
-                indx = best_steps[0]
-
-            # convert index to movement
-            # unravel to find [i,j] position in neighbors
-            # subtract [1,1] to adjust coordinate frame to center
-            delta = np.unravel_index(indx, (3,3)) - np.array((1,1))
+                delta = best_steps[0]
 
         return delta
 
@@ -493,14 +492,7 @@ def gkern(kernlen=3, nsig=3):
 def get_neighbors(array, cx, cy, r, includeCenter=False):
     """
     Returns values of neighbors in array of location cx, cy as 1D numpy
-    array. Removes value of location if includeCenter=False.
+    array.
     """
-    # pull section of field centered around cx, cy with reach r
-    subsample = array[cy-r:cy+r+1, cx-r:cx+r+1].ravel()
+    return array[cy-r:cy+r+1, cx-r:cx+r+1]
 
-    if includeCenter:
-        # do nothing
-        return subsample
-    else:
-        # pop out field[cx, cy] value
-        return np.delete(subsample, int(len(subsample)/2))
