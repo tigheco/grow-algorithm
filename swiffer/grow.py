@@ -77,20 +77,17 @@ class Dish():
         Dish.mixRatios = normSum([x["abundance"] for x in species])
 
     def addTissues(self, quantity):
-        idy, idx = np.where(Dish.map > 0)
+        valid_seeds = np.logical_and(Dish.map == 1, Dish.food > 0)
+
+        idy, idx = np.where(valid_seeds)
 
         for n in range(quantity):
-            while True:
-                # generate random seed
-                ind = np.random.randint(0, len(idx))
-                seed = [idx[ind], idy[ind]]
-
-                if (Dish.food[seed[1], seed[0]] > 0) and (Dish.map[seed[1], seed[0]] > 0):
-                    break
+            # randomly choose location
+            ind = np.random.randint(0, len(idx))
+            seed = [idx[ind], idy[ind]]
 
             # pick species
-            species = np.random.choice(Dish.speciesList,
-                                       p=Dish.mixRatios)
+            species = np.random.choice(Dish.speciesList, p=Dish.mixRatios)
 
             # create seed cell
             cell = Cell(Dish.links, species["species"], seed)
@@ -166,6 +163,7 @@ class Tissue():
                 cell.age += 1       # increment age counter
         return
 
+    @profile
     def feed(self, cell):
         """
         Consume nutrients from location and neighbors in proportion to
@@ -197,6 +195,7 @@ class Tissue():
 
         return
 
+    @profile
     def move(self, cell):
         """
         Move cell to new location. Does not move cell if currently at best
@@ -207,7 +206,7 @@ class Tissue():
 
         # throw error if no move available
         if np.isnan(delta).any():
-            print("NAN move")
+            raise Exception("get_step should always return valid delta for move.")
 
         # remove old location from maps of cell types and connections
         Dish.links[cell.y, cell.x] = 0
@@ -223,6 +222,7 @@ class Tissue():
 
         return
 
+    @profile
     def divide(self, cell):
         """
         Spawn new cell in new location. Does nothing if there are no available
@@ -293,6 +293,7 @@ class Tissue():
         # randomly choose a cell of your Tissue
         return np.random.choice(self.cells)
 
+    @profile
     def get_step(self, cell, forceMove):
         """
         get_step looks through a cell's neighbors and returns the best step
@@ -305,35 +306,37 @@ class Tissue():
             delta: best relative movement [delta Y, delta X] (np.array)
                    returns [nan, nan] if no steps possible
         """
-        # # get nutrients available to neighbors
-        # nutrients = get_neighbors(Dish.foodSums,
-        #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
-        #                          1, True)
-
-        # get nutrients at neighbors
-        nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
-
         # get valid locations
         valid_spaces = get_neighbors(Dish.map, cell.x, cell.y, 1, True)
+
         # get unoccupied locations
         full_spaces = get_neighbors(Dish.species, cell.x, cell.y, 1, True)
-
         # include center location if move is not forced
         if forceMove is False:
             full_spaces[4] = 0
 
-        # nutrients at possible locations
-        # valid locations == 1, unoccupied spaces == 0
-        steps = nutrients*(valid_spaces==1)*(full_spaces==0)
+        spaces = np.logical_and(valid_spaces==1, full_spaces==0)
 
         # nan if there are no possible steps
-        if not np.any(steps):
+        if not np.any(spaces):
             delta = np.array([np.nan, np.nan])
 
         # best step otherwise
         else:
+            # # get nutrients available to neighbors
+            # nutrients = get_neighbors(Dish.foodSums,
+            #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
+            #                          1, True)
+
+            # get nutrients at neighbors
+            nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
+
+            # nutrients at possible locations
+            # valid locations == 1, unoccupied spaces == 0
+            steps = nutrients*spaces
+
             # find steps with the most food
-            best_steps = np.where(steps == np.amax(steps))[0]
+            best_steps = np.where(steps == max(steps))[0]
 
             # get index of best step
             # randomly choose if some steps are tied for best
@@ -347,8 +350,6 @@ class Tissue():
             # unravel to find [i,j] position in neighbors
             # subtract [1,1] to adjust coordinate frame to center
             delta = np.unravel_index(indx, (3,3)) - np.array((1,1))
-
-            # cell.p = [cell.x + delta[1], cell.y + delta[0]]
 
         return delta
 
@@ -488,6 +489,7 @@ def gkern(kernlen=3, nsig=3):
     kern2d = np.outer(kern1d, kern1d)
     return kern2d/kern2d.sum()
 
+@profile
 def get_neighbors(array, cx, cy, r, includeCenter=False):
     """
     Returns values of neighbors in array of location cx, cy as 1D numpy

@@ -47,8 +47,8 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 400                                 # environment width
-    height = 400                                # environment height
+    width = 500                                 # environment width
+    height = 500                                # environment height
     maxIter = 250                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
     foodFile = "../_food/foodMaps-06.png"       # food map file name
