@@ -16,6 +16,7 @@ from PIL import Image
 
 import grow
 
+
 def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
     # initialize environment
     food = cv2.imread(foodFile, cv2.IMREAD_GRAYSCALE)
@@ -35,7 +36,7 @@ def draw(frames, fileName, fieldSize, dispSize):
 
     imageio.mimwrite(fileName, outFrames, macro_block_size=16, fps=30, quality=8)
 
-    return
+    return None
 
 
 def main():
@@ -46,27 +47,29 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 160                            # environment width
-    height = 160                           # environment height
-    maxIter = 100                          # timeout iterations
-    seeds = 1                            # number of seed cells
-    foodFile = "../_food/foodMaps-00.png"      # food map file name
-    mixRatios = [1, 1, 1]                   # species probability ratios
-    cellTypes = [                             # species properties
+    width = 400                                 # environment width
+    height = 400                                # environment height
+    maxIter = 250                               # timeout iterations
+    seeds = int(width/4)                        # number of seed cells
+    foodFile = "../_food/foodMaps-06.png"       # food map file name
+    mixRatios = [1, 1]                          # species probability ratios
+    cellTypes = [                               # species properties
         {
          "species": 1,
          "proliferation rate": 1,
-         "metabolism": 50,
+         "metabolism": 2,
          "abundance": 1,
-         "food to divide": 100
+         "food to divide": 2*5,
+         "division recovery time": 5
         },
-        # {
-        #  "species": 2,
-        #  "proliferation rate": 1,
-        #  "metabolism": 100,
-        #  "abundance": 1,
-        #  "food to divide": 100
-        # }
+        {
+         "species": 2,
+         "proliferation rate": 1,
+         "metabolism": 100,
+         "abundance": 1,
+         "food to divide": 100*3,
+         "division recovery time": 5
+        }
     ]
     outputSize = (800, 800)
     # -------------------------------------------------------------------------
@@ -81,8 +84,9 @@ def main():
     framesLinks = []
     framesFood = []
     framesFoodSums = []
-    for i in range(maxIter):
-        prevField = env.links.copy()
+    for i in range(1, maxIter+1):
+        prevFood = env.food.copy()
+        prevLinks = env.links.copy()
 
         # if i % 1 is 0:
         framesLinks.append(
@@ -94,7 +98,7 @@ def main():
                         np.zeros((height, width)))).astype("uint8"))
         framesFoodSums.append(
             (np.maximum(env.foodSums*255/4900,
-                        np.zeros((height+6, width+6)))).astype("uint8"))
+                        np.zeros((height+2, width+2)))).astype("uint8"))
 
         for tissue in tissues:
             tissue.update()
@@ -103,29 +107,36 @@ def main():
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
 
-        if (env.links == prevField).all():
+        if (env.links == prevLinks).all():
             print("\nConverged to steady state in %i iterations. Terminating growth." % i)
             break
 
-        if i == maxIter-1:
-            print("\nComplete.")
+        if (env.food == prevFood).all():
+            print("\nConsumed all nutrients in %i iterations. Terminating growth." % i)
+            break
+
+        if i == maxIter:
+            print("\nCompleted %i iterations." % i)
 
     print("\n[3/3] Saving...")
 
-    draw(framesLinks, "tissues.mp4", (width, height), outputSize)
+    # draw(framesLinks, "tissues.mp4", (width, height), outputSize)
     draw(framesSpecies, "species.mp4", (width, height), outputSize)
     draw(framesFood, "nutrients.mp4", (width, height), outputSize)
-    draw(framesFoodSums, "nutrientSums.mp4", (width+2, height+2), outputSize)
+    # draw(framesFoodSums, "nutrientSums.mp4", (width+2, height+2), outputSize)
 
     print("Complete.")
 
     return
 
+
 if __name__ == "__main__":
     main()
+
 
 # -----------------------------------------------------------------------------
 # references:
 # Reas, Casey. "Simulate: Diffusion-Limited Aggregation." Form+Code in Design,
 #     Art, and Architecture. http://formandcode.com/code-examples/simulate-dla
+#
 # -----------------------------------------------------------------------------
