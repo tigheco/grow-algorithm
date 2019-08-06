@@ -96,7 +96,7 @@ class Dish():
             species = np.random.choice(Dish.speciesList, p=Dish.mixRatios)
 
             # create seed cell
-            cell = Cell(Dish.links, species["species"], seed)
+            cell = Cell(Dish.links, species, seed)
 
             # create tissue
             Dish.tissuesList.append(
@@ -121,7 +121,7 @@ class Tissue():
         # characteristics
         Dish = environment
         self.age = 0
-        self.species = species["species"]
+        self.species = species
         self.nCells = len(cells)
         self.center = center
         self.cells = cells
@@ -143,6 +143,9 @@ class Tissue():
             for cell in list(self.cells):
                 # feed the cell
                 self.feed(cell)
+
+                # see how much food the cell has
+
 
                 # continue to next cell if done dividing
                 if cell.done is True:
@@ -221,7 +224,7 @@ class Tissue():
 
         # update maps of cell types and connections
         Dish.links[cell.y, cell.x] = self.index
-        Dish.species[cell.y, cell.x] = self.species
+        Dish.species[cell.y, cell.x] = self.species["species"]
 
         return
 
@@ -249,7 +252,7 @@ class Tissue():
 
             # update maps of cell types and connections
             Dish.links[new_loc[1], new_loc[0]] = self.index
-            Dish.species[new_loc[1], new_loc[0]] = self.species
+            Dish.species[new_loc[1], new_loc[0]] = self.species["species"]
 
             self.nCells += 1
             cell.food += -self.divThresh
@@ -432,7 +435,7 @@ class Cell():
 
     # @profile
     def __init__(self, map, species, position, dividing=True):
-        self.species = species
+        self.species = species["species"]
         self.x = position[0]
         self.y = position[1]
 
@@ -442,8 +445,9 @@ class Cell():
         self.dividing = dividing
         self.resting = False
         self.timer = 0
-
         self.done = False
+
+        self.health = species["endurance"]
 
 
         # TODO: get rid of this dumb ass probe variable

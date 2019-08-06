@@ -47,31 +47,45 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = int(1280/2)                             # environment width
-    height = int(720/2)                            # environment height
-    maxIter = 1000                               # timeout iterations
+    width = 100                                 # environment width
+    height = 100                                # environment height
+    maxIter = 500                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
-    foodFile = "../_food/title-01.png"          # food map file name
-    mixRatios = [1, 1]                          # species probability ratios
+    foodFile = "../_food/foodMaps-04.png"       # food map file name
+    mixRatios = [1, 1, 1]                       # species probability ratios
     cellTypes = [                               # species properties
         {
          "species": 1,
          "proliferation rate": 1,
-         "metabolism": 2,
+         "metabolism": 5,
          "abundance": 1,
-         "food to divide": 2*5,
-         "division recovery time": 5
+         "food to divide": 5*5,
+         "division recovery time": 5,
+         "food to survive": 5*2,
+         "endurance": 3,
         },
         {
          "species": 2,
          "proliferation rate": 1,
-         "metabolism": 100,
+         "metabolism": 7,
          "abundance": 1,
-         "food to divide": 100*3,
-         "division recovery time": 5
+         "food to divide": 7*5,
+         "division recovery time": 5,
+         "food to survive": 7*2,
+         "endurance": 3,
+        },
+        {
+         "species": 3,
+         "proliferation rate": 1,
+         "metabolism": 9,
+         "abundance": 1,
+         "food to divide": 9*4,
+         "division recovery time": 10,
+         "food to survive": 9*2,
+         "endurance": 3,
         }
     ]
-    outputSize = (1280, 720)
+    outputSize = 720, 720
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
