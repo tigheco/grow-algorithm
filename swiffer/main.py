@@ -17,10 +17,11 @@ from PIL import Image
 import grow
 
 
-def initialize(width, height, cellTypes, seeds, foodFile, mixRatios):
+def initialize(width, height, cellTypes, seeds, foodFile, mapFile, mixRatios):
     # initialize environment
     food = cv2.imread(foodFile, cv2.IMREAD_GRAYSCALE)
-    env = grow.Dish(width, height, food, mixRatios)
+    map = cv2.imread(mapFile, cv2.IMREAD_GRAYSCALE)
+    env = grow.Dish(width, height, food, map, mixRatios)
     env.addSpecies(cellTypes)
 
     # initialize tissues
@@ -47,11 +48,12 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 100                                 # environment width
-    height = 100                                # environment height
+    width = 640                                 # environment width
+    height = 360                                # environment height
     maxIter = 500                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
-    foodFile = "../_food/foodMaps-04.png"       # food map file name
+    foodFile = "../_food/foodMaps-00.png"       # food map file name
+    mapFile =  "../_food/title-03.png"
     mixRatios = [1, 1, 1]                       # species probability ratios
     cellTypes = [                               # species properties
         {
@@ -60,9 +62,9 @@ def main():
          "metabolism": 5,
          "abundance": 1,
          "food to divide": 5*5,
-         "division recovery time": 5,
+         "division recovery time": 10,
          "food to survive": 5*2,
-         "endurance": 3,
+         "endurance": 100,
         },
         {
          "species": 2,
@@ -70,9 +72,9 @@ def main():
          "metabolism": 7,
          "abundance": 1,
          "food to divide": 7*5,
-         "division recovery time": 5,
+         "division recovery time": 10,
          "food to survive": 7*2,
-         "endurance": 3,
+         "endurance": 100,
         },
         {
          "species": 3,
@@ -82,15 +84,15 @@ def main():
          "food to divide": 9*4,
          "division recovery time": 10,
          "food to survive": 9*2,
-         "endurance": 3,
+         "endurance": 100,
         }
     ]
-    outputSize = 720, 720
+    outputSize = 1280, 720
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
     env, tissues = initialize(width, height, cellTypes, seeds, foodFile,
-                              mixRatios)
+                              mapFile, mixRatios)
     print("Complete.")
 
     print("\n[2/3] Growing...")
@@ -114,20 +116,24 @@ def main():
             (np.maximum(env.foodSums*255/4900,
                         np.zeros((height+2, width+2)))).astype("uint8"))
 
+        if (env.nCells == 0):
+            print("\nAll cells dead in %i iterations. Terminating simulation." % i)
+            break
+
+        # if (env.links == prevLinks).all():
+        #     print("\nConverged to steady state in %i iterations. Terminating growth." % i)
+        #     break
+
+        # if (env.food == prevFood).all():
+        #     print("\nConsumed all nutrients in %i iterations. Terminating growth." % i)
+        #     break
+
         for tissue in tissues:
             tissue.update()
 
         progress = int(i*78/(maxIter-1))
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
-
-        if (env.links == prevLinks).all():
-            print("\nConverged to steady state in %i iterations. Terminating growth." % i)
-            break
-
-        if (env.food == prevFood).all():
-            print("\nConsumed all nutrients in %i iterations. Terminating growth." % i)
-            break
 
         if i == maxIter:
             print("\nCompleted %i iterations." % i)

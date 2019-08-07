@@ -49,12 +49,15 @@ class Dish():
     tissuesList = []            # tissues list
     mixRatios = []              # mix ratios
 
-    def __init__(self, width, height, foodImg, mixRatios):
+    nCells = 0
+
+    def __init__(self, width, height, foodImg, mapImg, mixRatios):
         # initialize space map
         # TODO: make map from image
         # TODO: make map true size of frame
-        Dish.map = np.pad(np.ones((height-2, width-2)),
-                          (1, 1), 'constant', constant_values=0)
+        mapImg = cv2.resize(mapImg, (width-2, height-2))
+        mapImg[mapImg > 0] = 1
+        Dish.map = np.pad(mapImg, (1, 1), 'constant', constant_values=0)
 
         # initialize cell type map
         Dish.species = np.zeros((height, width), dtype=np.int8)
@@ -97,6 +100,7 @@ class Dish():
 
             # create seed cell
             cell = Cell(Dish.links, species, seed)
+            Dish.nCells += 1
 
             # create tissue
             Dish.tissuesList.append(
@@ -141,12 +145,22 @@ class Tissue():
         for rate in range(self.proliferationRate):
             # update cells
             for cell in list(self.cells):
+                # kill the cell if health is at zero
+                if cell.health <= 0:
+                    self.kill(cell)
+                    continue
+
+                # health updates
                 # feed the cell
                 self.feed(cell)
+                # hurts if not enough food
+                if cell.food < cell.food_thresh:
+                    cell.health += -1
+                # heals if enough food
+                else:
+                    cell.health = min(cell.health+1, cell.max_health)
 
-                # see how much food the cell has
-
-
+                # action updates
                 # continue to next cell if done dividing
                 if cell.done is True:
                     continue
@@ -171,6 +185,21 @@ class Tissue():
 
                 cell.age += 1       # increment age counter
         return
+
+    def kill(self, cell):
+        """
+        Kills cell.
+        """
+        # remove cell from tissue
+        self.cells.remove(cell)
+        self.nCells += -1
+        Dish.nCells += -1
+
+        # remove old location from maps of cell types and connections
+        Dish.links[cell.y, cell.x] = 0
+        Dish.species[cell.y, cell.x] = 0
+
+        return None
 
     @profile
     def feed(self, cell):
@@ -198,6 +227,9 @@ class Tissue():
 
             # add to cell's food
             cell.food += self.metabolism
+        else:
+            # subtract from cell's food
+            cell.food += -self.metabolism
 
         return
 
@@ -255,6 +287,7 @@ class Tissue():
             Dish.species[new_loc[1], new_loc[0]] = self.species["species"]
 
             self.nCells += 1
+            Dish.nCells += 1
             cell.food += -self.divThresh
             cell.resting = True
 
@@ -435,19 +468,21 @@ class Cell():
 
     # @profile
     def __init__(self, map, species, position, dividing=True):
+        # parameters
         self.species = species["species"]
+        self.food_thresh = species["food to survive"]
+        self.max_health = species["endurance"]
+        self.health = species["endurance"]
         self.x = position[0]
         self.y = position[1]
 
+        # characteristics
         self.age = 0
         self.food = 0
-
         self.dividing = dividing
         self.resting = False
         self.timer = 0
         self.done = False
-
-        self.health = species["endurance"]
 
 
         # TODO: get rid of this dumb ass probe variable
