@@ -8,7 +8,7 @@ email: tighe.costa@gmail.com
 import numpy as np
 import scipy.signal as sig
 import scipy.stats as st
-import line_profiler
+# import line_profiler
 
 import cv2
 import random
@@ -137,7 +137,7 @@ class Tissue():
         self.divThresh = species["food to divide"]
         self.divRecover = species["division recovery time"]
 
-    @profile
+    # @profile
     def update(self):
         self.age += 1
 
@@ -201,7 +201,7 @@ class Tissue():
 
         return None
 
-    @profile
+    # @profile
     def feed(self, cell):
         """
         Consume nutrients from location and neighbors in proportion to
@@ -233,7 +233,7 @@ class Tissue():
 
         return
 
-    @profile
+    # @profile
     def move(self, cell):
         """
         Move cell to new location. Does not move cell if currently at best
@@ -260,7 +260,7 @@ class Tissue():
 
         return
 
-    @profile
+    # @profile
     def divide(self, cell):
         """
         Spawn new cell in new location. Does nothing if there are no available
@@ -332,7 +332,7 @@ class Tissue():
         # randomly choose a cell of your Tissue
         return np.random.choice(self.cells)
 
-    @profile
+    # @profile
     def get_step(self, cell, forceMove):
         """
         get_step looks through a cell's neighbors and returns the best step
@@ -527,7 +527,7 @@ def gkern(kernlen=3, nsig=3):
     kern2d = np.outer(kern1d, kern1d)
     return kern2d/kern2d.sum()
 
-@profile
+# @profile
 def get_neighbors(array, cx, cy, r, includeCenter=False):
     """
     Returns values of neighbors in array of location cx, cy as 1D numpy
