@@ -53,8 +53,6 @@ class Dish():
 
     def __init__(self, width, height, foodImg, mapImg, mixRatios):
         # initialize space map
-        # TODO: make map from image
-        # TODO: make map true size of frame
         mapImg = cv2.resize(mapImg, (width-2, height-2))
         mapImg[mapImg > 0] = 1
         Dish.map = np.pad(mapImg, (1, 1), 'constant', constant_values=0)
