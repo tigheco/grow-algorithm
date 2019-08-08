@@ -24,7 +24,7 @@ indices = np.array([[[0,0], [0,1], [0,2]],
                     [[2,0], [2,1], [2,2]]])
 
 
-class Dish():
+class Dish:
     """
     Everything happens in the dish.
 
@@ -73,7 +73,7 @@ class Dish():
         Dish.width = width
         Dish.height = height
 
-        return
+        return None
 
     # TODO: combine into init
     def addSpecies(self, species):
@@ -97,12 +97,12 @@ class Dish():
             species = np.random.choice(Dish.speciesList, p=Dish.mixRatios)
 
             # create seed cell
-            cell = Cell(Dish.links, species, seed)
+            cell = Cell(species, seed)
             Dish.nCells += 1
 
             # create tissue
             Dish.tissuesList.append(
-                Tissue(Dish, species, [cell], seed, n+1)
+                Sim(Dish, species, [cell], seed, n+1)
             )
 
             # populate maps
@@ -112,7 +112,7 @@ class Dish():
         return Dish.tissuesList
 
 
-class Tissue():
+class Sim:
 
     env = []
     stepDist = np.array([1/np.sqrt(2), 1, 1/np.sqrt(2),
@@ -134,6 +134,8 @@ class Tissue():
         self.metabolism = species["metabolism"]
         self.divThresh = species["food to divide"]
         self.divRecover = species["division recovery time"]
+
+        return None
 
     @profile
     def update(self):
@@ -160,7 +162,7 @@ class Tissue():
 
                 # action updates
                 # continue to next cell if done dividing
-                if cell.done is True:
+                if cell.dividing is True:
                     continue
                 # let the cell rest if it needs to
                 elif cell.resting:
@@ -182,7 +184,8 @@ class Tissue():
                         self.move(cell)
 
                 cell.age += 1       # increment age counter
-        return
+
+        return None
 
     def kill(self, cell):
         """
@@ -229,7 +232,7 @@ class Tissue():
             # subtract from cell's food
             cell.food += -self.metabolism
 
-        return
+        return None
 
     @profile
     def move(self, cell):
@@ -256,7 +259,7 @@ class Tissue():
         Dish.links[cell.y, cell.x] = self.index
         Dish.species[cell.y, cell.x] = self.species["species"]
 
-        return
+        return None
 
     @profile
     def divide(self, cell):
@@ -269,7 +272,7 @@ class Tissue():
 
         # if all surrounding cells are occupied
         if np.isnan(delta).any():
-            cell.done = True
+            cell.dividing = True
         # if there is a valid step that can be made
         else:
             # calculate absolute location of new cell
@@ -277,7 +280,7 @@ class Tissue():
 
             # create cell at new location
             self.cells.append(
-                Cell(Dish.links, self.species, (new_loc[0], new_loc[1]))
+                Cell(self.species, (new_loc[0], new_loc[1]))
             )
 
             # update maps of cell types and connections
@@ -289,46 +292,7 @@ class Tissue():
             cell.food += -self.divThresh
             cell.resting = True
 
-        # # if next to a different tissue of the same species
-        # elif status[0] == "merge tissue":
-        #     # get tissue from list
-        #     tissue = [tissue for tissue in Dish.tissuesList
-        #               if tissue.index == status[1]][0]
-        #     self.merge(tissue)
-        #     return
-        #
-        # elif status[0] == "no growth":
-        #     cell.dividing = False
-        #     return
-
-        return
-
-    def merge(self, tissue):
-        """
-        Merge with a tissue of the same species.
-        """
-        # get new index
-        self.index = self.index if self.index < tissue.index else tissue.index
-
-        # add cells
-        self.nCells += tissue.nCells
-        self.cells.extend(tissue.cells)
-
-        # update maps
-        for cell in tissue.cells:
-            Dish.links[cell.y, cell.x] = self.index
-
-        # get new center
-        self.updateCenter()
-
-        # delete other tissue
-        Dish.tissuesList.remove(tissue)
-
-        return
-
-    def reset(self):
-        # randomly choose a cell of your Tissue
-        return np.random.choice(self.cells)
+        return None
 
     @profile
     def get_step(self, cell, forceMove):
@@ -390,110 +354,95 @@ class Tissue():
         """
         get_state
         """
+        # TODO: should I be tracking status of the cells here?
         status = self.get_step(cell, forceMove=True)
 
-        if status[0] == "no moves":
-            return ("no moves",)
+        return status
 
-        # if along edge, alone
-        if Dish.map[cell.p[1], cell.p[0]] == 0:
-            return ("along edge",)
 
-        # pull neighbors
-        neighborsT = get_neighbors(Dish.links, cell.p[0], cell.p[1], 1)
-        neighborsS = get_neighbors(Dish.species, cell.p[0], cell.p[1], 1)
+class Tissue:
 
-        # check neighbors tissue
-        likeT = [x for x in neighborsT if x == self.index]
-        unlikeT = [x for x in neighborsT if x != 0 and x != self.index]
+    env = []
 
-        # check neighbors species
-        likeS = [x for x in neighborsS if x == self.species]
-        unlikeS = [x for x in neighborsS if x != 0 and x != self.species]
+    def __init__(self, environment, species, cells, center, index):
+        # characteristics
+        Dish = environment
+        self.age = 0
+        self.species = species
+        self.nCells = len(cells)
+        self.center = center
+        self.cells = cells
+        self.index = index
 
-        # if a neighbor is of the same tissue
-        if len(likeT) > 0 and len(unlikeT) == 0:
-            return ("grow tissue",)
+        # properties
+        self.proliferationRate = species["proliferation rate"]
+        self.metabolism = species["metabolism"]
+        self.divThresh = species["food to divide"]
+        self.divRecover = species["division recovery time"]
 
-        # if a neighbor is of the same species
-        elif len(likeS) > 0 and len(unlikeS) == 0:
+        return None
 
-            index = unlikeT[0]
-
-            if index > self.index:
-                return ("merge tissue", index)
-
-        # if a neighbor is of a different species
-        return ("no growth",)
-
-    # stepRandom obsolete
-    def stepRandom(self, cell):
+    def merge(self, tissue):
         """
-        Steps cell probe to step in a random direction.
+        Merge with a tissue of the same species.
         """
-        while True:
-            probex = random.choice([-1, 0, 1])
-            probey = random.choice([-1, 0, 1])
-            p = [cell.x + probex, cell.y + probey]
+        # get new index
+        self.index = self.index if self.index < tissue.index else tissue.index
 
-            # if in bounds
-            if (p[0] >= 0 and
-                    p[1] >= 0 and
-                    p[0] < Dish.width and
-                    p[1] < Dish.height):
-                cell.p = p
-                break
+        # add cells
+        self.nCells += tissue.nCells
+        self.cells.extend(tissue.cells)
 
-    # updateCenter obsolete
-    def updateCenter(self):
-        idy, idx = np.where(Dish.links == self.index)
+        # update maps
+        for cell in tissue.cells:
+            Dish.links[cell.y, cell.x] = self.index
 
-        cx = float(sum(idx)) / float(len(idx))
-        cy = float(sum(idy)) / float(len(idy))
+        # get new center
+        self.updateCenter()
 
-        self.center[0] = int(np.random.choice([np.floor(cx)-1, np.ceil(cx)+1]))
-        self.center[1] = int(np.random.choice([np.floor(cy)-1, np.ceil(cy)+1]))
+        # delete other tissue
+        Dish.tissuesList.remove(tissue)
 
-        self.center[0] = int(cx)
-        self.center[1] = int(cy)
+        return None
 
-        return
+    def reset(self):
+        # randomly choose a cell of your Tissue
+        return np.random.choice(self.cells)
 
-class Cell():
+
+class Cell:
     """
-    Cell class
+    Cells don't do much - things just happen to them. Luckily, cells know all
+    about themselves.
+
+    cell type definitions live here
+    cell positions live here
+    cells also keep track of their past
+    and know when theyre done
     """
 
     # @profile
-    def __init__(self, map, species, position, dividing=True):
-        # parameters
+    def __init__(self, species, position):
+        # type definitions
         self.species = species["species"]
         self.food_thresh = species["food to survive"]
         self.max_health = species["endurance"]
         self.health = species["endurance"]
+        self.metabolism = species["metabolism"]
+        self.div_rate = species["proliferation rate"]
+        self.div_thresh = species["food to divide"]
+        self.div_recover = species["division recovery time"]
+
+        # position
         self.x = position[0]
         self.y = position[1]
 
-        # characteristics
+        #
         self.age = 0
         self.food = 0
-        self.dividing = dividing
         self.resting = False
         self.timer = 0
-        self.done = False
-
-
-        # TODO: get rid of this dumb ass probe variable
-        self.p = [float('NaN'),float('NaN')]
-
-        # # vectorizing locations addition 2019/08/01
-        # self.loc = np.zeros(map.shape, dtype=bool)
-        # self.loc[..., position[1], position[0]] = 1
-        #
-        # # vectorizing neighbors addition 2019/08/01
-        # self.neighbors = np.zeros(map.shape, dtype=bool)
-        # self.neighbors[..., position[1]-1:position[1]+2, position[0]-1:position[0]+2] = 1
-        # # self.neighbors[..., position[0], position[1]] = 0
+        self.dividing = False
 
 def normpdf(x, mu=0, sigma=1):
     """

@@ -48,12 +48,12 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 640                                 # environment width
-    height = 360                                # environment height
+    width = 50                                 # environment width
+    height = 50                                # environment height
     maxIter = 500                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
     foodFile = "../_food/foodMaps-00.png"       # food map file name
-    mapFile =  "../_food/title-03.png"
+    mapFile =  "../_food/foodMaps-00.png"
     mixRatios = [1, 1, 1]                       # species probability ratios
     cellTypes = [                               # species properties
         {
@@ -87,7 +87,7 @@ def main():
          "endurance": 100,
         }
     ]
-    outputSize = 1280, 720
+    outputSize = 400, 400
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
