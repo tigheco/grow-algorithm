@@ -102,239 +102,6 @@ class Dish:
 
         return Dish.cellsList
 
-
-class Sim:
-
-    env = []
-    stepDist = np.array([1/np.sqrt(2), 1, 1/np.sqrt(2),
-                         1,            0, 1,
-                         1/np.sqrt(2), 1, 1/np.sqrt(2)])
-
-    def __init__(self, environment):
-
-        Dish = environment
-
-        return None
-
-    @profile
-    def update(self, cell):
-        cell.age += 1
-
-        # handle proliferation rates
-        for rate in range(cell.div_rate):
-            # kill the cell if health is at zero
-            if cell.health <= 0:
-                self.kill(cell)
-                continue
-
-            # health updates
-            # feed the cell
-            self.feed(cell)
-            # hurts if not enough food
-            if cell.food < cell.food_thresh:
-                cell.health += -1
-            # heals if enough food
-            else:
-                cell.health = min(cell.health+1, cell.max_health)
-
-            # action updates
-            # continue to next cell if done dividing
-            if cell.dividing is True:
-                continue
-            # let the cell rest if it needs to
-            elif cell.resting:
-                cell.timer += 1
-
-                # reset after enough rest
-                if cell.timer > cell.div_recover:
-                    cell.resting = False
-                    cell.timer = 0
-
-            # but once its done resting do some stuff
-            else:
-                # divide if possible
-                if cell.food > cell.div_thresh:
-                    self.divide(cell)
-
-                # otherwise consider moving
-                else:
-                    self.move(cell)
-
-            cell.age += 1       # increment age counter
-
-        return None
-
-    def kill(self, cell):
-        """
-        Kills cell.
-        """
-        # remove cell from tissue
-        Dish.cellsList.remove(cell)
-        Dish.nCells += -1
-
-        # remove old location from maps of cell types and connections
-        # Dish.links[cell.y, cell.x] = 0
-        Dish.species[cell.y, cell.x] = 0
-
-        return None
-
-    @profile
-    def feed(self, cell):
-        """
-        Consume nutrients from location and neighbors in proportion to
-        availability.
-        """
-        # pull available nutrients
-        nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
-
-        # feed if there are nutrients
-        if np.sum(nutrients) > cell.metabolism:
-            # ignore spots with nutrients < 0
-            nutrients[nutrients < 0] = 0
-            # distribute metabolism proportional to available food
-            # bite = (cell.metabolism * normSum(nutrients)).reshape(3,3)
-            bite = cell.metabolism * normSum(nutrients)
-            # take bite out of food
-            Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
-
-            # # take bite out of foodSums
-            # biteSums = sig.convolve(bite, Dish.biteKern)
-            # r = Dish.biteR
-            # Dish.foodSums[cell.y-r-1:cell.y+r+2, cell.x-r-1:cell.x+r+2] += -biteSums
-
-            # add to cell's food
-            cell.food += cell.metabolism
-        else:
-            # subtract from cell's food
-            cell.food += -cell.metabolism
-
-        return None
-
-    @profile
-    def move(self, cell):
-        """
-        Move cell to new location. Does not move cell if currently at best
-        location or there are no available locations to move.
-        """
-        # get relative movement to make
-        delta = self.get_step(cell, forceMove=False)
-
-        # throw error if no move available
-        if np.isnan(delta).any():
-            raise Exception("get_step should always return valid delta for move.")
-
-        # remove old location from maps of cell types and connections
-        # Dish.links[cell.y, cell.x] = 0
-        Dish.species[cell.y, cell.x] = 0
-
-        # update location of cell
-        cell.x += delta[1]
-        cell.y += delta[0]
-
-        # update maps of cell types and connections
-        # Dish.links[cell.y, cell.x] = self.index
-        Dish.species[cell.y, cell.x] = cell.species
-
-        return None
-
-    @profile
-    def divide(self, cell):
-        """
-        Spawn new cell in new location. Does nothing if there are no available
-        locations to spawn.
-        """
-        # get relative location of new cell
-        delta = self.get_step(cell, forceMove=True)
-
-        # if all surrounding cells are occupied
-        if np.isnan(delta).any():
-            cell.dividing = True
-        # if there is a valid step that can be made
-        else:
-            # calculate absolute location of new cell
-            new_loc = [cell.x + delta[1], cell.y + delta[0]]
-
-            # create cell at new location
-            Dish.cellsList.append(
-                Cell(cell.type, (new_loc[0], new_loc[1]))
-            )
-
-            # update maps of cell types and connections
-            # Dish.links[new_loc[1], new_loc[0]] = self.index
-            Dish.species[new_loc[1], new_loc[0]] = cell.species
-
-            Dish.nCells += 1
-            cell.food += -cell.div_thresh
-            cell.resting = True
-
-        return None
-
-    @profile
-    def get_step(self, cell, forceMove):
-        """
-        get_step looks through a cell's neighbors and returns the best step
-        that can be made by that cell.
-
-        input
-            cell: cell to look at (Cell object)
-            forceMove: include option of staying still (bool)
-        output
-            delta: best relative movement [delta Y, delta X] (np.array)
-                   returns [nan, nan] if no steps possible
-        """
-        # get valid locations
-        valid_spaces = get_neighbors(Dish.map, cell.x, cell.y, 1, True)
-
-        # get unoccupied locations
-        full_spaces = get_neighbors(Dish.species, cell.x, cell.y, 1, True)
-        # include center location if move is not forced
-        if forceMove is False:
-            # full_spaces[4] = 0
-            full_spaces[1,1] = 0
-
-        spaces = np.logical_and(valid_spaces==1, full_spaces==0)
-
-        # nan if there are no possible steps
-        if not np.any(spaces):
-            delta = [np.nan, np.nan]
-
-        # best step otherwise
-        else:
-            # # get nutrients available to neighbors
-            # nutrients = get_neighbors(Dish.foodSums,
-            #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
-            #                          1, True)
-
-            # get nutrients at neighbors
-            nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
-
-            # nutrients at possible locations
-            # valid locations == 1, unoccupied spaces == 0
-            steps = nutrients*spaces
-
-            # find steps with the most food
-            # gets array indices for steps with max food
-            # translates absolute steps to steps relative to center with -1
-            best_steps = indices[steps == np.max(steps)] - 1
-
-            # if multiple options
-            if len(best_steps) > 1:
-                delta = random.choice(best_steps)
-            else:
-                delta = best_steps[0]
-
-        return delta
-
-    def get_state(self, cell):
-        """
-        get_state
-        """
-        # TODO: should I be tracking status of the cells here?
-        status = self.get_step(cell, forceMove=True)
-
-        return status
-
-
 class Cell:
     """
     Cells don't do much - things just happen to them. Luckily, cells know all
@@ -369,6 +136,223 @@ class Cell:
         self.resting = False
         self.timer = 0
         self.dividing = False
+
+@profile
+def update(cell, Dish):
+    cell.age += 1
+
+    # handle proliferation rates
+    for rate in range(cell.div_rate):
+        # kill the cell if health is at zero
+        if cell.health <= 0:
+            kill(cell, Dish)
+            continue
+
+        # health updates
+        # feed the cell
+        feed(cell, Dish)
+        # hurts if not enough food
+        if cell.food < cell.food_thresh:
+            cell.health += -1
+        # heals if enough food
+        else:
+            cell.health = min(cell.health+1, cell.max_health)
+
+        # action updates
+        # continue to next cell if done dividing
+        if cell.dividing is True:
+            continue
+        # let the cell rest if it needs to
+        elif cell.resting:
+            cell.timer += 1
+
+            # reset after enough rest
+            if cell.timer > cell.div_recover:
+                cell.resting = False
+                cell.timer = 0
+
+        # but once its done resting do some stuff
+        else:
+            # divide if possible
+            if cell.food > cell.div_thresh:
+                divide(cell, Dish)
+
+            # otherwise consider moving
+            else:
+                move(cell, Dish)
+
+        cell.age += 1       # increment age counter
+
+    return None
+
+def kill(cell, Dish):
+    """
+    Kills cell.
+    """
+    # remove cell from tissue
+    Dish.cellsList.remove(cell)
+    Dish.nCells += -1
+
+    # remove old location from maps of cell types and connections
+    Dish.species[cell.y, cell.x] = 0
+
+    return None
+
+@profile
+def feed(cell, Dish):
+    """
+    Consume nutrients from location and neighbors in proportion to
+    availability.
+    """
+    # pull available nutrients
+    nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
+
+    # feed if there are nutrients
+    if np.sum(nutrients) > cell.metabolism:
+        # ignore spots with nutrients < 0
+        nutrients[nutrients < 0] = 0
+        # distribute metabolism proportional to available food
+        # bite = (cell.metabolism * normSum(nutrients)).reshape(3,3)
+        bite = cell.metabolism * normSum(nutrients)
+        # take bite out of food
+        Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
+
+        # # take bite out of foodSums
+        # biteSums = sig.convolve(bite, Dish.biteKern)
+        # r = Dish.biteR
+        # Dish.foodSums[cell.y-r-1:cell.y+r+2, cell.x-r-1:cell.x+r+2] += -biteSums
+
+        # add to cell's food
+        cell.food += cell.metabolism
+    else:
+        # subtract from cell's food
+        cell.food += -cell.metabolism
+
+    return None
+
+@profile
+def move(cell, Dish):
+    """
+    Move cell to new location. Does not move cell if currently at best
+    location or there are no available locations to move.
+    """
+    # get relative movement to make
+    delta = get_step(cell, Dish, forceMove=False)
+
+    # throw error if no move available
+    if np.isnan(delta).any():
+        raise Exception("get_step should always return valid delta for move.")
+
+    # remove old location from maps of cell types and connections
+    # Dish.links[cell.y, cell.x] = 0
+    Dish.species[cell.y, cell.x] = 0
+
+    # update location of cell
+    cell.x += delta[1]
+    cell.y += delta[0]
+
+    # update maps of cell types and connections
+    # Dish.links[cell.y, cell.x] = self.index
+    Dish.species[cell.y, cell.x] = cell.species
+
+    return None
+
+@profile
+def divide(cell, Dish):
+    """
+    Spawn new cell in new location. Does nothing if there are no available
+    locations to spawn.
+    """
+    # get relative location of new cell
+    delta = get_step(cell, Dish, forceMove=True)
+
+    # if all surrounding cells are occupied
+    if np.isnan(delta).any():
+        cell.dividing = True
+    # if there is a valid step that can be made
+    else:
+        # calculate absolute location of new cell
+        new_loc = [cell.x + delta[1], cell.y + delta[0]]
+
+        # create cell at new location
+        Dish.cellsList.append(
+            Cell(cell.type, (new_loc[0], new_loc[1]))
+        )
+
+        # update maps of cell types and connections
+        # Dish.links[new_loc[1], new_loc[0]] = self.index
+        Dish.species[new_loc[1], new_loc[0]] = cell.species
+
+        Dish.nCells += 1
+        cell.food += -cell.div_thresh
+        cell.resting = True
+
+    return None
+
+@profile
+def get_step(cell, Dish, forceMove):
+    """
+    get_step looks through a cell's neighbors and returns the best step
+    that can be made by that cell.
+
+    input
+        cell: cell to look at (Cell object)
+        forceMove: include option of staying still (bool)
+    output
+        delta: best relative movement [delta Y, delta X] (np.array)
+               returns [nan, nan] if no steps possible
+    """
+    # get valid locations
+    valid_spaces = get_neighbors(Dish.map, cell.x, cell.y, 1, True)
+
+    # get unoccupied locations
+    full_spaces = get_neighbors(Dish.species, cell.x, cell.y, 1, True)
+    # include center location if move is not forced
+    if forceMove is False:
+        # full_spaces[4] = 0
+        full_spaces[1,1] = 0
+
+    spaces = np.logical_and(valid_spaces==1, full_spaces==0)
+
+    # nan if there are no possible steps
+    if not np.any(spaces):
+        delta = [np.nan, np.nan]
+
+    # best step otherwise
+    else:
+        # # get nutrients available to neighbors
+        # nutrients = get_neighbors(Dish.foodSums,
+        #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
+        #                          1, True)
+
+        # get nutrients at neighbors
+        nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
+
+        # nutrients at possible locations
+        # valid locations == 1, unoccupied spaces == 0
+        steps = nutrients*spaces
+
+        # find steps with the most food
+        # gets array indices for steps with max food
+        # translates absolute steps to steps relative to center with -1
+        best_steps = indices[steps == np.max(steps)] - 1
+
+        # if multiple options
+        if len(best_steps) > 1:
+            delta = random.choice(best_steps)
+        else:
+            delta = best_steps[0]
+
+    return delta
+
+def get_state(self, cell):
+    """
+    get_state
+    """
+    # TODO: should I be tracking status of the cells here?
+    status = self.get_step(cell, forceMove=True)
+
+    return status
 
 def normpdf(x, mu=0, sigma=1):
     """

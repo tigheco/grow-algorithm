@@ -26,9 +26,7 @@ def initialize(width, height, cellTypes, seeds, foodFile, mapFile, mixRatios):
     # initialize tissues
     cells = env.addTissues(seeds)
 
-    sim = grow.Sim(env)
-
-    return env, sim, cells
+    return env, cells
 
 
 def draw(frames, fileName, fieldSize, dispSize):
@@ -92,7 +90,7 @@ def main():
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
-    env, sim, cells = initialize(width, height, cellTypes, seeds, foodFile,
+    env, cells = initialize(width, height, cellTypes, seeds, foodFile,
                               mapFile, mixRatios)
     print("Complete.")
 
@@ -104,10 +102,8 @@ def main():
     t = 0
 
     for i in range(1, maxIter+1):
-        prevFood = env.food.copy()
-
         for cell in cells:
-            sim.update(cell)
+            grow.update(cell, env)
             t += 1
 
             if t % 1000 is 0:
