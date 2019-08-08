@@ -50,8 +50,9 @@ class Dish:
     mixRatios = []              # mix ratios
 
     nCells = 0
+    cellsList = []
 
-    def __init__(self, width, height, foodImg, mapImg, mixRatios):
+    def __init__(self, width, height, foodImg, mapImg, cellTypes):
         # initialize space map
         mapImg = cv2.resize(mapImg, (width-2, height-2))
         mapImg[mapImg > 0] = 1
@@ -67,21 +68,16 @@ class Dish:
         # build food within reach map from file
         Dish.foodSums = sig.convolve(Dish.food.copy(), Dish.biteKern)
 
-        # initialize links map
-        Dish.links = np.zeros((height, width), dtype=np.int8)
-
         Dish.width = width
         Dish.height = height
 
-        return None
-
-    # TODO: combine into init
-    def addSpecies(self, species):
         # save cell types to dish
-        Dish.speciesList = species
+        Dish.speciesList = cellTypes
 
         # pull abundance ratios from cell types and normalize sum to 1
-        Dish.mixRatios = normSum([x["abundance"] for x in species])
+        Dish.mixRatios = normSum([x["abundance"] for x in cellTypes])
+
+        return None
 
     def addTissues(self, quantity):
         valid_seeds = np.logical_and(Dish.map == 1, Dish.food > 0)
@@ -97,19 +93,14 @@ class Dish:
             species = np.random.choice(Dish.speciesList, p=Dish.mixRatios)
 
             # create seed cell
-            cell = Cell(species, seed)
-            Dish.nCells += 1
+            cell = Cell(species, seed)          # initialize
+            Dish.cellsList.append(cell)         # add to list
+            Dish.nCells += 1                    # update count
 
-            # create tissue
-            Dish.tissuesList.append(
-                Sim(Dish, species, [cell], seed, n+1)
-            )
-
-            # populate maps
-            Dish.links[seed[1], seed[0]] = n+1
+            # populate cell map
             Dish.species[seed[1], seed[0]] = species["species"]
 
-        return Dish.tissuesList
+        return Dish.cellsList
 
 
 class Sim:
@@ -119,71 +110,57 @@ class Sim:
                          1,            0, 1,
                          1/np.sqrt(2), 1, 1/np.sqrt(2)])
 
-    def __init__(self, environment, species, cells, center, index):
-        # characteristics
-        Dish = environment
-        self.age = 0
-        self.species = species
-        self.nCells = len(cells)
-        self.center = center
-        self.cells = cells
-        self.index = index
+    def __init__(self, environment):
 
-        # properties
-        self.proliferationRate = species["proliferation rate"]
-        self.metabolism = species["metabolism"]
-        self.divThresh = species["food to divide"]
-        self.divRecover = species["division recovery time"]
+        Dish = environment
 
         return None
 
     @profile
-    def update(self):
-        self.age += 1
+    def update(self, cell):
+        cell.age += 1
 
         # handle proliferation rates
-        for rate in range(self.proliferationRate):
-            # update cells
-            for cell in list(self.cells):
-                # kill the cell if health is at zero
-                if cell.health <= 0:
-                    self.kill(cell)
-                    continue
+        for rate in range(cell.div_rate):
+            # kill the cell if health is at zero
+            if cell.health <= 0:
+                self.kill(cell)
+                continue
 
-                # health updates
-                # feed the cell
-                self.feed(cell)
-                # hurts if not enough food
-                if cell.food < cell.food_thresh:
-                    cell.health += -1
-                # heals if enough food
+            # health updates
+            # feed the cell
+            self.feed(cell)
+            # hurts if not enough food
+            if cell.food < cell.food_thresh:
+                cell.health += -1
+            # heals if enough food
+            else:
+                cell.health = min(cell.health+1, cell.max_health)
+
+            # action updates
+            # continue to next cell if done dividing
+            if cell.dividing is True:
+                continue
+            # let the cell rest if it needs to
+            elif cell.resting:
+                cell.timer += 1
+
+                # reset after enough rest
+                if cell.timer > cell.div_recover:
+                    cell.resting = False
+                    cell.timer = 0
+
+            # but once its done resting do some stuff
+            else:
+                # divide if possible
+                if cell.food > cell.div_thresh:
+                    self.divide(cell)
+
+                # otherwise consider moving
                 else:
-                    cell.health = min(cell.health+1, cell.max_health)
+                    self.move(cell)
 
-                # action updates
-                # continue to next cell if done dividing
-                if cell.dividing is True:
-                    continue
-                # let the cell rest if it needs to
-                elif cell.resting:
-                    cell.timer += 1
-
-                    # reset after enough rest
-                    if cell.timer > self.divRecover:
-                        cell.resting = False
-                        cell.timer = 0
-
-                # but once its done resting do some stuff
-                else:
-                    # divide if possible
-                    if cell.food > self.divThresh:
-                        self.divide(cell)
-
-                    # otherwise consider moving
-                    else:
-                        self.move(cell)
-
-                cell.age += 1       # increment age counter
+            cell.age += 1       # increment age counter
 
         return None
 
@@ -192,12 +169,11 @@ class Sim:
         Kills cell.
         """
         # remove cell from tissue
-        self.cells.remove(cell)
-        self.nCells += -1
+        Dish.cellsList.remove(cell)
         Dish.nCells += -1
 
         # remove old location from maps of cell types and connections
-        Dish.links[cell.y, cell.x] = 0
+        # Dish.links[cell.y, cell.x] = 0
         Dish.species[cell.y, cell.x] = 0
 
         return None
@@ -212,12 +188,12 @@ class Sim:
         nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
 
         # feed if there are nutrients
-        if np.sum(nutrients) > self.metabolism:
+        if np.sum(nutrients) > cell.metabolism:
             # ignore spots with nutrients < 0
             nutrients[nutrients < 0] = 0
             # distribute metabolism proportional to available food
-            # bite = (self.metabolism * normSum(nutrients)).reshape(3,3)
-            bite = self.metabolism * normSum(nutrients)
+            # bite = (cell.metabolism * normSum(nutrients)).reshape(3,3)
+            bite = cell.metabolism * normSum(nutrients)
             # take bite out of food
             Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
 
@@ -227,10 +203,10 @@ class Sim:
             # Dish.foodSums[cell.y-r-1:cell.y+r+2, cell.x-r-1:cell.x+r+2] += -biteSums
 
             # add to cell's food
-            cell.food += self.metabolism
+            cell.food += cell.metabolism
         else:
             # subtract from cell's food
-            cell.food += -self.metabolism
+            cell.food += -cell.metabolism
 
         return None
 
@@ -248,7 +224,7 @@ class Sim:
             raise Exception("get_step should always return valid delta for move.")
 
         # remove old location from maps of cell types and connections
-        Dish.links[cell.y, cell.x] = 0
+        # Dish.links[cell.y, cell.x] = 0
         Dish.species[cell.y, cell.x] = 0
 
         # update location of cell
@@ -256,8 +232,8 @@ class Sim:
         cell.y += delta[0]
 
         # update maps of cell types and connections
-        Dish.links[cell.y, cell.x] = self.index
-        Dish.species[cell.y, cell.x] = self.species["species"]
+        # Dish.links[cell.y, cell.x] = self.index
+        Dish.species[cell.y, cell.x] = cell.species
 
         return None
 
@@ -279,17 +255,16 @@ class Sim:
             new_loc = [cell.x + delta[1], cell.y + delta[0]]
 
             # create cell at new location
-            self.cells.append(
-                Cell(self.species, (new_loc[0], new_loc[1]))
+            Dish.cellsList.append(
+                Cell(cell.type, (new_loc[0], new_loc[1]))
             )
 
             # update maps of cell types and connections
-            Dish.links[new_loc[1], new_loc[0]] = self.index
-            Dish.species[new_loc[1], new_loc[0]] = self.species["species"]
+            # Dish.links[new_loc[1], new_loc[0]] = self.index
+            Dish.species[new_loc[1], new_loc[0]] = cell.species
 
-            self.nCells += 1
             Dish.nCells += 1
-            cell.food += -self.divThresh
+            cell.food += -cell.div_thresh
             cell.resting = True
 
         return None
@@ -360,56 +335,6 @@ class Sim:
         return status
 
 
-class Tissue:
-
-    env = []
-
-    def __init__(self, environment, species, cells, center, index):
-        # characteristics
-        Dish = environment
-        self.age = 0
-        self.species = species
-        self.nCells = len(cells)
-        self.center = center
-        self.cells = cells
-        self.index = index
-
-        # properties
-        self.proliferationRate = species["proliferation rate"]
-        self.metabolism = species["metabolism"]
-        self.divThresh = species["food to divide"]
-        self.divRecover = species["division recovery time"]
-
-        return None
-
-    def merge(self, tissue):
-        """
-        Merge with a tissue of the same species.
-        """
-        # get new index
-        self.index = self.index if self.index < tissue.index else tissue.index
-
-        # add cells
-        self.nCells += tissue.nCells
-        self.cells.extend(tissue.cells)
-
-        # update maps
-        for cell in tissue.cells:
-            Dish.links[cell.y, cell.x] = self.index
-
-        # get new center
-        self.updateCenter()
-
-        # delete other tissue
-        Dish.tissuesList.remove(tissue)
-
-        return None
-
-    def reset(self):
-        # randomly choose a cell of your Tissue
-        return np.random.choice(self.cells)
-
-
 class Cell:
     """
     Cells don't do much - things just happen to them. Luckily, cells know all
@@ -424,6 +349,7 @@ class Cell:
     # @profile
     def __init__(self, species, position):
         # type definitions
+        self.type = species
         self.species = species["species"]
         self.food_thresh = species["food to survive"]
         self.max_health = species["endurance"]
@@ -474,7 +400,6 @@ def gkern(kernlen=3, nsig=3):
     kern2d = np.outer(kern1d, kern1d)
     return kern2d/kern2d.sum()
 
-@profile
 def get_neighbors(array, cx, cy, r, includeCenter=False):
     """
     Returns values of neighbors in array of location cx, cy as 1D numpy

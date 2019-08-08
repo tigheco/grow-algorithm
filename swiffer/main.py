@@ -21,13 +21,14 @@ def initialize(width, height, cellTypes, seeds, foodFile, mapFile, mixRatios):
     # initialize environment
     food = cv2.imread(foodFile, cv2.IMREAD_GRAYSCALE)
     map = cv2.imread(mapFile, cv2.IMREAD_GRAYSCALE)
-    env = grow.Dish(width, height, food, map, mixRatios)
-    env.addSpecies(cellTypes)
+    env = grow.Dish(width, height, food, map, cellTypes)
 
     # initialize tissues
-    tissues = env.addTissues(seeds)
+    cells = env.addTissues(seeds)
 
-    return env, tissues
+    sim = grow.Sim(env)
+
+    return env, sim, cells
 
 
 def draw(frames, fileName, fieldSize, dispSize):
@@ -64,7 +65,7 @@ def main():
          "food to divide": 5*5,
          "division recovery time": 10,
          "food to survive": 5*2,
-         "endurance": 100,
+         "endurance": 10,
         },
         {
          "species": 2,
@@ -74,7 +75,7 @@ def main():
          "food to divide": 7*5,
          "division recovery time": 10,
          "food to survive": 7*2,
-         "endurance": 100,
+         "endurance": 10,
         },
         {
          "species": 3,
@@ -84,66 +85,56 @@ def main():
          "food to divide": 9*4,
          "division recovery time": 10,
          "food to survive": 9*2,
-         "endurance": 100,
+         "endurance": 10,
         }
     ]
     outputSize = 400, 400
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
-    env, tissues = initialize(width, height, cellTypes, seeds, foodFile,
+    env, sim, cells = initialize(width, height, cellTypes, seeds, foodFile,
                               mapFile, mixRatios)
     print("Complete.")
 
     print("\n[2/3] Growing...")
     framesSpecies = []
-    framesLinks = []
     framesFood = []
-    framesFoodSums = []
+    # framesFoodSums = []
+
+    t = 0
+
     for i in range(1, maxIter+1):
         prevFood = env.food.copy()
-        prevLinks = env.links.copy()
 
-        # if i % 1 is 0:
-        framesLinks.append(
-            (env.links*255/len(env.tissuesList)).astype("uint8"))
-        framesSpecies.append(
-            (env.species*255/len(cellTypes)).astype("uint8"))
-        framesFood.append(
-            (np.maximum(env.food*255/100,
-                        np.zeros((height, width)))).astype("uint8"))
-        framesFoodSums.append(
-            (np.maximum(env.foodSums*255/4900,
-                        np.zeros((height+2, width+2)))).astype("uint8"))
+        for cell in cells:
+            sim.update(cell)
+            t += 1
 
-        if (env.nCells == 0):
-            print("\nAll cells dead in %i iterations. Terminating simulation." % i)
-            break
-
-        # if (env.links == prevLinks).all():
-        #     print("\nConverged to steady state in %i iterations. Terminating growth." % i)
-        #     break
-
-        # if (env.food == prevFood).all():
-        #     print("\nConsumed all nutrients in %i iterations. Terminating growth." % i)
-        #     break
-
-        for tissue in tissues:
-            tissue.update()
+            if t % 1000 is 0:
+                framesSpecies.append(
+                    (env.species*255/len(cellTypes)).astype("uint8"))
+                framesFood.append(
+                    (np.maximum(env.food*255/100,
+                                np.zeros((height, width)))).astype("uint8"))
+                # framesFoodSums.append(
+                #     (np.maximum(env.foodSums*255/4900,
+                #                 np.zeros((height+2, width+2)))).astype("uint8"))
 
         progress = int(i*78/(maxIter-1))
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
+
+        if (env.nCells == 0):
+            print("\nAll cells dead in %i iterations. Terminating simulation." % i)
+            break
 
         if i == maxIter:
             print("\nCompleted %i iterations." % i)
 
     print("\n[3/3] Saving...")
 
-    # draw(framesLinks, "tissues.mp4", (width, height), outputSize)
     draw(framesSpecies, "species.mp4", (width, height), outputSize)
     draw(framesFood, "nutrients.mp4", (width, height), outputSize)
-    # draw(framesFoodSums, "nutrientSums.mp4", (width+2, height+2), outputSize)
 
     print("Complete.")
 
