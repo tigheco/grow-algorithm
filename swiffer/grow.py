@@ -57,6 +57,7 @@ class Dish:
         mapImg = cv2.resize(mapImg, (width-2, height-2))
         mapImg[mapImg > 0] = 1
         Dish.map = np.pad(mapImg, (1, 1), 'constant', constant_values=0)
+        Dish.map = 1 - Dish.map
 
         # initialize cell type map
         Dish.species = np.zeros((height, width), dtype=np.int8)
@@ -80,7 +81,7 @@ class Dish:
         return None
 
     def addTissues(self, quantity):
-        valid_seeds = np.logical_and(Dish.map == 1, Dish.food > 0)
+        valid_seeds = np.logical_and(Dish.map == 0, Dish.food > 0)
 
         idy, idx = np.where(valid_seeds)
 
@@ -125,6 +126,7 @@ class Cell:
         self.div_rate = species["proliferation rate"]
         self.div_thresh = species["food to divide"]
         self.div_recover = species["division recovery time"]
+        self.move_thresh = species["food to move"]
 
         # position
         self.x = position[0]
@@ -137,7 +139,7 @@ class Cell:
         self.timer = 0
         self.dividing = False
 
-@profile
+
 def update(cell, Dish):
     cell.age += 1
 
@@ -178,12 +180,13 @@ def update(cell, Dish):
                 divide(cell, Dish)
 
             # otherwise consider moving
-            else:
+            elif cell.food > cell.move_thresh:
                 move(cell, Dish)
 
         cell.age += 1       # increment age counter
 
     return None
+
 
 def kill(cell, Dish):
     """
@@ -198,7 +201,7 @@ def kill(cell, Dish):
 
     return None
 
-@profile
+
 def feed(cell, Dish):
     """
     Consume nutrients from location and neighbors in proportion to
@@ -230,34 +233,35 @@ def feed(cell, Dish):
 
     return None
 
-@profile
+
 def move(cell, Dish):
     """
     Move cell to new location. Does not move cell if currently at best
     location or there are no available locations to move.
     """
     # get relative movement to make
-    delta = get_step(cell, Dish, forceMove=False)
+    delta = get_step(cell, Dish, forceMove=True)
 
     # throw error if no move available
     if np.isnan(delta).any():
-        raise Exception("get_step should always return valid delta for move.")
+        return None
+        # raise Exception("get_step should always return valid delta for move.")
+    else:
+        # remove old location from maps of cell types and connections
+        # Dish.links[cell.y, cell.x] = 0
+        Dish.species[cell.y, cell.x] = 0
 
-    # remove old location from maps of cell types and connections
-    # Dish.links[cell.y, cell.x] = 0
-    Dish.species[cell.y, cell.x] = 0
+        # update location of cell
+        cell.x += delta[1]
+        cell.y += delta[0]
 
-    # update location of cell
-    cell.x += delta[1]
-    cell.y += delta[0]
+        # update maps of cell types and connections
+        # Dish.links[cell.y, cell.x] = self.index
+        Dish.species[cell.y, cell.x] = cell.species
 
-    # update maps of cell types and connections
-    # Dish.links[cell.y, cell.x] = self.index
-    Dish.species[cell.y, cell.x] = cell.species
+        return None
 
-    return None
 
-@profile
 def divide(cell, Dish):
     """
     Spawn new cell in new location. Does nothing if there are no available
@@ -309,13 +313,13 @@ def get_step(cell, Dish, forceMove):
     full_spaces = get_neighbors(Dish.species, cell.x, cell.y, 1, True)
     # include center location if move is not forced
     if forceMove is False:
-        # full_spaces[4] = 0
         full_spaces[1,1] = 0
 
-    spaces = np.logical_and(valid_spaces==1, full_spaces==0)
+    # spaces = np.logical_and(valid_spaces==1, full_spaces==0)
+    spaces = valid_spaces + full_spaces == 0
 
     # nan if there are no possible steps
-    if not np.any(spaces):
+    if not spaces.any():
         delta = [np.nan, np.nan]
 
     # best step otherwise
@@ -335,7 +339,7 @@ def get_step(cell, Dish, forceMove):
         # find steps with the most food
         # gets array indices for steps with max food
         # translates absolute steps to steps relative to center with -1
-        best_steps = indices[steps == np.max(steps)] - 1
+        best_steps = indices[steps == np.amax(steps)] - 1
 
         # if multiple options
         if len(best_steps) > 1:

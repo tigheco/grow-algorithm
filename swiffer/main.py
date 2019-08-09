@@ -38,7 +38,6 @@ def draw(frames, fileName, fieldSize, dispSize):
 
     return None
 
-
 def main():
 
     np.random.seed()
@@ -47,11 +46,11 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 50                                 # environment width
-    height = 50                                # environment height
+    width = 200                                 # environment width
+    height = 200                                # environment height
     maxIter = 500                               # timeout iterations
     seeds = int(width/4)                        # number of seed cells
-    foodFile = "../_food/foodMaps-00.png"       # food map file name
+    foodFile = "../_food/foodMaps-04.png"       # food map file name
     mapFile =  "../_food/foodMaps-00.png"
     mixRatios = [1, 1, 1]                       # species probability ratios
     cellTypes = [                               # species properties
@@ -61,29 +60,32 @@ def main():
          "metabolism": 5,
          "abundance": 1,
          "food to divide": 5*5,
+         "food to move": 5,
          "division recovery time": 10,
          "food to survive": 5*2,
-         "endurance": 10,
+         "endurance": 80,
         },
         {
          "species": 2,
          "proliferation rate": 1,
          "metabolism": 7,
          "abundance": 1,
+         "food to move": 5,
          "food to divide": 7*5,
          "division recovery time": 10,
          "food to survive": 7*2,
-         "endurance": 10,
+         "endurance": 60,
         },
         {
          "species": 3,
          "proliferation rate": 1,
          "metabolism": 9,
          "abundance": 1,
+         "food to move": 5,
          "food to divide": 9*4,
          "division recovery time": 10,
          "food to survive": 9*2,
-         "endurance": 10,
+         "endurance": 100,
         }
     ]
     outputSize = 400, 400
@@ -100,13 +102,15 @@ def main():
     # framesFoodSums = []
 
     t = 0
+    nCellsLast = seeds
 
     for i in range(1, maxIter+1):
         for cell in cells:
             grow.update(cell, env)
             t += 1
 
-            if t % 1000 is 0:
+            # if abs(env.nCells - nCellsLast) == 20:
+            if t % 1000 == 0:
                 framesSpecies.append(
                     (env.species*255/len(cellTypes)).astype("uint8"))
                 framesFood.append(
@@ -116,11 +120,22 @@ def main():
                 #     (np.maximum(env.foodSums*255/4900,
                 #                 np.zeros((height+2, width+2)))).astype("uint8"))
 
+                nCellsLast = env.nCells
+
         progress = int(i*78/(maxIter-1))
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
         sys.stdout.flush()
 
         if (env.nCells == 0):
+            framesSpecies.append(
+                (env.species*255/len(cellTypes)).astype("uint8"))
+            framesFood.append(
+                (np.maximum(env.food*255/100,
+                            np.zeros((height, width)))).astype("uint8"))
+            # framesFoodSums.append(
+            #     (np.maximum(env.foodSums*255/4900,
+            #                 np.zeros((height+2, width+2)))).astype("uint8"))
+
             print("\nAll cells dead in %i iterations. Terminating simulation." % i)
             break
 
