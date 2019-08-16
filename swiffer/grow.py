@@ -154,7 +154,7 @@ def update(cell, Dish):
         # feed the cell
         feed(cell, Dish)
         # hurts if not enough food
-        if cell.food < cell.food_thresh:
+        if cell.food < cell.food_thresh * random.uniform(0.8, 1.2):
             cell.health += -1
         # heals if enough food
         else:
@@ -169,18 +169,18 @@ def update(cell, Dish):
             cell.timer += 1
 
             # reset after enough rest
-            if cell.timer > cell.div_recover:
+            if cell.timer > cell.div_recover * random.uniform(0.8, 1.2):
                 cell.resting = False
                 cell.timer = 0
 
         # but once its done resting do some stuff
         else:
             # divide if possible
-            if cell.food > cell.div_thresh:
+            if cell.food > cell.div_thresh * random.uniform(0.8, 1.2):
                 divide(cell, Dish)
 
             # otherwise consider moving
-            elif cell.food > cell.move_thresh:
+            elif cell.food > cell.move_thresh * random.uniform(0.8, 1.2):
                 move(cell, Dish)
 
         cell.age += 1       # increment age counter
@@ -240,26 +240,23 @@ def move(cell, Dish):
     location or there are no available locations to move.
     """
     # get relative movement to make
-    delta = get_step(cell, Dish, forceMove=True)
+    delta = get_step(cell, Dish, forceMove=False)
 
-    # throw error if no move available
-    if np.isnan(delta).any():
-        return None
-        # raise Exception("get_step should always return valid delta for move.")
-    else:
-        # remove old location from maps of cell types and connections
-        # Dish.links[cell.y, cell.x] = 0
-        Dish.species[cell.y, cell.x] = 0
+    # # throw error if no move available
+    # if np.isnan(delta).any():
+    #     raise Exception("get_step should always return valid delta for move.")
+    # # else:
+    # remove old location from maps of cell types and connections
+    Dish.species[cell.y, cell.x] = 0
 
-        # update location of cell
-        cell.x += delta[1]
-        cell.y += delta[0]
+    # update location of cell
+    cell.x += delta[1]
+    cell.y += delta[0]
 
-        # update maps of cell types and connections
-        # Dish.links[cell.y, cell.x] = self.index
-        Dish.species[cell.y, cell.x] = cell.species
+    # update maps of cell types and connections
+    Dish.species[cell.y, cell.x] = cell.species
 
-        return None
+    return None
 
 
 def divide(cell, Dish):
@@ -293,7 +290,7 @@ def divide(cell, Dish):
 
     return None
 
-@profile
+# @profile
 def get_step(cell, Dish, forceMove):
     """
     get_step looks through a cell's neighbors and returns the best step
@@ -349,6 +346,7 @@ def get_step(cell, Dish, forceMove):
 
     return delta
 
+
 def get_state(self, cell):
     """
     get_state
@@ -357,6 +355,7 @@ def get_state(self, cell):
     status = self.get_step(cell, forceMove=True)
 
     return status
+
 
 def normpdf(x, mu=0, sigma=1):
     """
@@ -367,6 +366,7 @@ def normpdf(x, mu=0, sigma=1):
         u = (n-mu)/abs(sigma)
         y.append((1/(np.sqrt(2*np.pi)*abs(sigma)))*np.exp(-u*u/2))
     return y
+
 
 def normSum(array, sum=1):
     """
@@ -379,6 +379,7 @@ def normSum(array, sum=1):
     else:
         return array/total
 
+
 def gkern(kernlen=3, nsig=3):
     """
     Returns a 2D Gaussian kernel.
@@ -387,6 +388,7 @@ def gkern(kernlen=3, nsig=3):
     kern1d = np.diff(st.norm.cdf(x))
     kern2d = np.outer(kern1d, kern1d)
     return kern2d/kern2d.sum()
+
 
 def get_neighbors(array, cx, cy, r, includeCenter=False):
     """

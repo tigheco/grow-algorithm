@@ -5,6 +5,7 @@ _sims/
 # algorithm outputs
 *mp4
 *.lprof
+*.npy
 
 # Python 3 binaries
 __pycache__/

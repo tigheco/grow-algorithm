@@ -8,11 +8,13 @@ email: tighe.costa@gmail.com
 """
 
 import numpy as np
+import random
 import sys
 
 import cv2
 import imageio
 from PIL import Image
+from datetime import datetime
 
 import grow
 
@@ -46,49 +48,49 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 200                                 # environment width
-    height = 200                                # environment height
-    maxIter = 500                               # timeout iterations
-    seeds = int(width/4)                        # number of seed cells
-    foodFile = "../_food/foodMaps-04.png"       # food map file name
-    mapFile =  "../_food/foodMaps-00.png"
-    mixRatios = [1, 1, 1]                       # species probability ratios
+    width = 1920                                # environment width
+    height = 1080                               # environment height
+    maxIter = 800                               # timeout iterations
+    seeds = int(width/10)                       # number of seed cells
+    foodFile = "../_food/title-01.png"          # food map file path
+    mapFile =  "../_food/title-03.png"          # area map file path
+    mixRatios = [5, 4, 7]                       # species probability ratios
     cellTypes = [                               # species properties
         {
          "species": 1,
          "proliferation rate": 1,
-         "metabolism": 5,
+         "metabolism": 10,
          "abundance": 1,
-         "food to divide": 5*5,
-         "food to move": 5,
+         "food to divide": 10*4,
+         "food to move": 10,
          "division recovery time": 10,
-         "food to survive": 5*2,
-         "endurance": 80,
+         "food to survive": 10*2,
+         "endurance": 180,
         },
         {
          "species": 2,
          "proliferation rate": 1,
-         "metabolism": 7,
+         "metabolism": 15,
          "abundance": 1,
-         "food to move": 5,
-         "food to divide": 7*5,
+         "food to move": 15,
+         "food to divide": 15*4,
          "division recovery time": 10,
-         "food to survive": 7*2,
-         "endurance": 60,
+         "food to survive": 15*2,
+         "endurance": 160,
         },
         {
          "species": 3,
          "proliferation rate": 1,
-         "metabolism": 9,
+         "metabolism": 20,
          "abundance": 1,
-         "food to move": 5,
-         "food to divide": 9*4,
+         "food to move": 20,
+         "food to divide": 20*4,
          "division recovery time": 10,
-         "food to survive": 9*2,
-         "endurance": 100,
+         "food to survive": 20*2,
+         "endurance": 200,
         }
     ]
-    outputSize = 400, 400
+    outputSize = 1920, 1080
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
@@ -105,22 +107,30 @@ def main():
     nCellsLast = seeds
 
     for i in range(1, maxIter+1):
-        for cell in cells:
-            grow.update(cell, env)
-            t += 1
 
-            # if abs(env.nCells - nCellsLast) == 20:
-            if t % 1000 == 0:
-                framesSpecies.append(
-                    (env.species*255/len(cellTypes)).astype("uint8"))
-                framesFood.append(
-                    (np.maximum(env.food*255/100,
-                                np.zeros((height, width)))).astype("uint8"))
-                # framesFoodSums.append(
-                #     (np.maximum(env.foodSums*255/4900,
-                #                 np.zeros((height+2, width+2)))).astype("uint8"))
+        chunks = np.array_split(np.array(cells), 2)
 
-                nCellsLast = env.nCells
+        for chunk in chunks:
+
+            if not chunk.tolist():
+                continue
+
+            for n, cell in enumerate(chunk):
+                grow.update(cell, env)
+                t += 1
+
+            framesSpecies.append(
+                (env.species*255/len(cellTypes)).astype("uint8"))
+            framesFood.append(
+                (np.maximum(env.food*255/100,
+                            np.zeros((height, width)))).astype("uint8"))
+
+        # framesFoodSums.append(
+        #     (np.maximum(env.foodSums*255/4900,
+        #                 np.zeros((height+2, width+2)))).astype("uint8"))
+
+        # env.cellsList.sort(key=lambda cell: (cell.species, cell.age))
+        # random.shuffle(env.cellsList)
 
         progress = int(i*78/(maxIter-1))
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
@@ -144,8 +154,16 @@ def main():
 
     print("\n[3/3] Saving...")
 
-    draw(framesSpecies, "species.mp4", (width, height), outputSize)
-    draw(framesFood, "nutrients.mp4", (width, height), outputSize)
+    # unique time stamps for data
+    timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+
+    # save data just in case
+    # np.save(timestamp + " species", framesSpecies)
+    # np.save(timestamp + " nutrients", framesFood)
+
+    # save out video files
+    draw(framesSpecies, timestamp + " species.mp4", (width, height), outputSize)
+    draw(framesFood, timestamp + " nutrients.mp4", (width, height), outputSize)
 
     print("Complete.")
 
