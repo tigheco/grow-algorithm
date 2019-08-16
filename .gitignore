@@ -3,6 +3,7 @@ _food/
 _sims/
 
 # algorithm outputs
+swiffer/sims/
 *mp4
 *.lprof
 *.npy

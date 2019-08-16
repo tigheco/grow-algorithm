@@ -15,6 +15,7 @@ import cv2
 import imageio
 from PIL import Image
 from datetime import datetime
+import h5py
 
 import grow
 
@@ -36,7 +37,7 @@ def draw(frames, fileName, fieldSize, dispSize):
     for frame in frames:
         outFrames.append(cv2.resize(frame, dispSize))
 
-    imageio.mimwrite(fileName, outFrames, macro_block_size=16, fps=30, quality=8)
+    imageio.mimwrite(fileName, outFrames, macro_block_size=16, fps=30, quality=9)
 
     return None
 
@@ -48,12 +49,12 @@ def main():
 
     # -------------------------------------------------------------------------
     # user controls
-    width = 1920                                # environment width
-    height = 1080                               # environment height
-    maxIter = 800                               # timeout iterations
+    width = 112                                 # environment width
+    height = 112                                # environment height
+    maxIter = 20                               # timeout iterations
     seeds = int(width/10)                       # number of seed cells
-    foodFile = "../_food/title-01.png"          # food map file path
-    mapFile =  "../_food/title-03.png"          # area map file path
+    foodFile = "../_food/foodMaps-00.png"       # food map file path
+    mapFile =  "../_food/foodMaps-00.png"       # area map file path
     mixRatios = [5, 4, 7]                       # species probability ratios
     cellTypes = [                               # species properties
         {
@@ -90,7 +91,7 @@ def main():
          "endurance": 200,
         }
     ]
-    outputSize = 1920, 1080
+    outputSize = 112, 112
     # -------------------------------------------------------------------------
 
     print("[1/3] Initializing...")
@@ -101,7 +102,6 @@ def main():
     print("\n[2/3] Growing...")
     framesSpecies = []
     framesFood = []
-    # framesFoodSums = []
 
     t = 0
     nCellsLast = seeds
@@ -125,10 +125,7 @@ def main():
                 (np.maximum(env.food*255/100,
                             np.zeros((height, width)))).astype("uint8"))
 
-        # framesFoodSums.append(
-        #     (np.maximum(env.foodSums*255/4900,
-        #                 np.zeros((height+2, width+2)))).astype("uint8"))
-
+        # random shuffle cells
         # env.cellsList.sort(key=lambda cell: (cell.species, cell.age))
         # random.shuffle(env.cellsList)
 
@@ -142,9 +139,6 @@ def main():
             framesFood.append(
                 (np.maximum(env.food*255/100,
                             np.zeros((height, width)))).astype("uint8"))
-            # framesFoodSums.append(
-            #     (np.maximum(env.foodSums*255/4900,
-            #                 np.zeros((height+2, width+2)))).astype("uint8"))
 
             print("\nAll cells dead in %i iterations. Terminating simulation." % i)
             break
@@ -155,15 +149,21 @@ def main():
     print("\n[3/3] Saving...")
 
     # unique time stamps for data
+    outpath = "sims/"
     timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 
-    # save data just in case
-    # np.save(timestamp + " species", framesSpecies)
-    # np.save(timestamp + " nutrients", framesFood)
+    # save out data
+    outfile = h5py.File(outpath + timestamp + "data.h5", "w")
+    outfile.create_dataset("species",
+                           data=np.array(framesSpecies),
+                           compression="gzip", compression_opts=4)
+    outfile.create_dataset("nutrients",
+                           data=np.array(framesFood),
+                           compression="gzip", compression_opts=4)
 
-    # save out video files
-    draw(framesSpecies, timestamp + " species.mp4", (width, height), outputSize)
-    draw(framesFood, timestamp + " nutrients.mp4", (width, height), outputSize)
+    # create movies
+    draw(framesSpecies, outpath + timestamp + " species.mp4", (width, height), outputSize)
+    draw(framesFood, outpath + timestamp + " nutrients.mp4", (width, height), outputSize)
 
     print("Complete.")
 
