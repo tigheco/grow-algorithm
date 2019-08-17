@@ -80,7 +80,7 @@ class Dish:
 
         return None
 
-    def addTissues(self, quantity):
+    def populate(self, quantity):
         valid_seeds = np.logical_and(Dish.map == 0, Dish.food > 0)
 
         idy, idx = np.where(valid_seeds)
@@ -132,7 +132,7 @@ class Cell:
         self.x = position[0]
         self.y = position[1]
 
-        #
+        # state
         self.age = 0
         self.food = 0
         self.resting = False
@@ -141,6 +141,9 @@ class Cell:
 
 
 def update(cell, Dish):
+    """
+    Update cell state.
+    """
     cell.age += 1
 
     # handle proliferation rates
