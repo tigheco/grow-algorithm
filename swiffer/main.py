@@ -41,6 +41,7 @@ def draw(frames, fileName, fieldSize, dispSize):
 
     return None
 
+
 def main():
 
     np.random.seed()
