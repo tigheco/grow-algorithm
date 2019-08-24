@@ -78,14 +78,12 @@ def main(config):
 
     np.random.seed()
 
-    print("GROW: Biologically Inspired Cellular Growth Algorithm\n")
-
     print("[1/3] Initializing...")
     env, cells = initialize(config)
 
-    print("Complete.")
+    print("  Complete.")
 
-    print("\n[2/3] Growing...")
+    print("[2/3] Growing...")
     framesSpecies = []
     framesFood = []
 
@@ -115,8 +113,8 @@ def main(config):
         # env.cellList.sort(key=lambda cell: (cell.species, cell.age))
         # random.shuffle(env.cellList)
 
-        progress = int(i*78/config["maxIter"])
-        sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
+        progress = int(i*76/config["maxIter"])
+        sys.stdout.write("\r"+"  ["+"-"*progress+" "*(75-progress)+"]")
         sys.stdout.flush()
 
         if (env.nCells == 0):
@@ -126,24 +124,26 @@ def main(config):
                 (np.maximum(env.food*255/100,
                             np.zeros((config["height"], config["width"])))).astype("uint8"))
 
-            print("\nAll cells dead in %i iterations. Terminating simulation." % i)
+            print("\n  All cells dead in %i iterations. Terminating simulation." % i)
             break
 
         if i == config["maxIter"]:
-            print("\nCompleted %i iterations." % i)
+            print("\n  Completed %i iterations." % i)
 
-    print("\n[3/3] Saving...")
-
-    # save out data
-    save([framesSpecies, framesFood], ["species", "nutrients"],
-         outputPath, config["outputSize"])
-
-    print("Complete.")
+    # print("[3/3] Saving...")
+    #
+    # # save out data
+    # save([framesSpecies, framesFood], ["species", "nutrients"],
+    #      outputPath, config["outputSize"])
+    #
+    # print("  Complete.")
 
     return None
 
 
 if __name__ == "__main__":
+    print("GROW: Biologically Inspired Cellular Growth Algorithm\n")
+
     import demo_config
     main(demo_config.config)
 

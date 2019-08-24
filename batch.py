@@ -8,6 +8,7 @@ email: tighe.costa@gmail.com
 """
 
 import pandas as pd
+import openpyxl
 import argparse
 
 import simulate
@@ -19,6 +20,8 @@ def load(configFile, batchSheet):
     """
     # import excel workbook
     configxlsx = pd.ExcelFile(configFile)
+    file = openpyxl.load_workbook(configFile)
+    sheet = file.get_sheet_by_name(batchSheet)
 
     # pull worksheet with cell type definitions
     cellTypes = pd.read_excel(configxlsx, "cell types", index_col=0)
@@ -26,7 +29,7 @@ def load(configFile, batchSheet):
     # pull worksheet with simulation parameter definitions
     batch = pd.read_excel(configxlsx, batchSheet, index_col=0)
 
-    return cellTypes, batch
+    return cellTypes, batch, sheet, file
 
 
 def build(cellTypeDefs, sim_params):
@@ -49,15 +52,22 @@ def build(cellTypeDefs, sim_params):
 
 def main(configFile, batchSheet):
     # load configuration file
-    cellTypes, batch = load(configFile, batchSheet)
+    cellTypes, batch, sheet, file= load(configFile, batchSheet)
 
-    for sim_name in batch:
-        # build configuration dict for simulation
-        config = build(cellTypes, batch[sim_name])
+    for colidx, sim_name in enumerate(batch, start=2):
+        if batch[sim_name]["completed"] is False:
+            print("GROW Simulation #" + sim_name)
 
-        # run simulation
-        simulate.main(config)
-        print()
+            # build configuration dict for simulation
+            config = build(cellTypes, batch[sim_name])
+
+            # run simulation
+            simulate.main(config)
+            batch[sim_name]["completed"] = True
+            sheet.cell(row=2, column=colidx).value = "TRUE"
+            print()
+
+    file.save(configFile)
 
     return None
 
@@ -81,4 +91,5 @@ if __name__ == "__main__":
     configFile = args.config            # configuraiton file
     batchSheet = args.batch             # batch definitions
 
+    print("GROW: Biologically Inspired Cellular Growth Algorithm\n")
     main(configFile, batchSheet)
