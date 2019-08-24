@@ -21,11 +21,13 @@ import pandas as pd
 
 import grow
 
+mapPath = "_food/"
+outputPath = "_sims/"
 
 def initialize(config):
     # import environment definitions
-    food = cv2.imread(config["foodFile"], cv2.IMREAD_GRAYSCALE)
-    map = cv2.imread(config["mapFile"], cv2.IMREAD_GRAYSCALE)
+    food = cv2.imread(mapPath + config["foodFile"], cv2.IMREAD_GRAYSCALE)
+    map = cv2.imread(mapPath + config["mapFile"], cv2.IMREAD_GRAYSCALE)
 
     # initialize environment
     env = grow.Dish(config["width"], config["height"], food, map,
@@ -134,11 +136,11 @@ def main(config):
 
     # save out data
     save([framesSpecies, framesFood], ["species", "nutrients"],
-         config["outputPath"], config["outputSize"])
+         outputPath, config["outputSize"])
 
     print("Complete.")
 
-    return
+    return None
 
 
 if __name__ == "__main__":

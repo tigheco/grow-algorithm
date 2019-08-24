@@ -8,10 +8,10 @@ email: tighe.costa@gmail.com
 config = {
     "width": 540,                               # environment width
     "height": 540,                              # environment height
-    "maxIter": 100,                             # timeout iterations
+    "maxIter": 50,                              # timeout iterations
     "seeds": 15,                                # number of seed cells
-    "foodFile": "_food/foodMaps-04.png",        # food map file path
-    "mapFile": "_food/foodMaps-00.png",         # area map file path
+    "foodFile": "foodMaps-04.png",              # food map file path
+    "mapFile": "foodMaps-00.png",               # area map file path
     "mixRatios": [5, 4, 7],                     # species probability ratios
     "cellTypes": [                              # species properties
         {
