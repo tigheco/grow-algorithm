@@ -13,23 +13,21 @@ import argparse
 
 import simulate
 
-def load(configFile, batchSheet):
+def load(configFile, batchName):
     """
     Import configuration file, loading cell types spreadsheet and specified
     batch definitions spreadsheet.
     """
     # import excel workbook
     configxlsx = pd.ExcelFile(configFile)
-    file = openpyxl.load_workbook(configFile)
-    sheet = file.get_sheet_by_name(batchSheet)
 
     # pull worksheet with cell type definitions
     cellTypes = pd.read_excel(configxlsx, "cell types", index_col=0)
 
     # pull worksheet with simulation parameter definitions
-    batch = pd.read_excel(configxlsx, batchSheet, index_col=0)
+    batch = pd.read_excel(configxlsx, batchName, index_col=0)
 
-    return cellTypes, batch, sheet, file
+    return cellTypes, batch
 
 
 def build(cellTypeDefs, sim_params):
@@ -50,11 +48,28 @@ def build(cellTypeDefs, sim_params):
     return config
 
 
-def main(configFile, batchSheet):
-    # load configuration file
-    cellTypes, batch, sheet, file= load(configFile, batchSheet)
+def save(configFile, batchName, batch):
+    # load excel worksheet for writing
+    file = openpyxl.load_workbook(configFile)
+    sheet = file[batchName]
 
     for colidx, sim_name in enumerate(batch, start=2):
+        sheet.cell(row=2, column=colidx).value = batch[sim_name]["completed"]
+
+    file.save(configFile)
+
+    return None
+
+
+def main(configFile, batchName):
+    # load configuration file
+    cellTypes, batch = load(configFile, batchName)
+
+    if all(batch.loc["completed", :].values.tolist()):
+        print("Simulation batch " + batchName + " already executed. Terminating program.")
+        return None
+
+    for sim_name in batch:
         if batch[sim_name]["completed"] is False:
             print("GROW Simulation #" + sim_name)
 
@@ -64,10 +79,10 @@ def main(configFile, batchSheet):
             # run simulation
             simulate.main(config)
             batch[sim_name]["completed"] = True
-            sheet.cell(row=2, column=colidx).value = "TRUE"
+
             print()
 
-    file.save(configFile)
+    save(configFile, batchName, batch)
 
     return None
 
@@ -89,7 +104,7 @@ if __name__ == "__main__":
     # process input arguments
     args = parser.parse_args()
     configFile = args.config            # configuraiton file
-    batchSheet = args.batch             # batch definitions
+    batchName = args.batch             # batch definitions
 
     print("GROW: Biologically Inspired Cellular Growth Algorithm\n")
-    main(configFile, batchSheet)
+    main(configFile, batchName)

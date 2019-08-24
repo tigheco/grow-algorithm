@@ -130,13 +130,13 @@ def main(config):
         if i == config["maxIter"]:
             print("\n  Completed %i iterations." % i)
 
-    # print("[3/3] Saving...")
-    #
-    # # save out data
-    # save([framesSpecies, framesFood], ["species", "nutrients"],
-    #      outputPath, config["outputSize"])
-    #
-    # print("  Complete.")
+    print("[3/3] Saving...")
+
+    # save out data
+    save([framesSpecies, framesFood], ["species", "nutrients"],
+         outputPath, config["outputSize"])
+
+    print("  Complete.")
 
     return None
 
