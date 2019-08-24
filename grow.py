@@ -1,5 +1,5 @@
 """
-GROW: Back End
+GROW: Growth Module
 
 author: Tighe Costa
 email: tighe.costa@gmail.com
