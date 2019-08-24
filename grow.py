@@ -31,26 +31,19 @@ class Dish:
     map defines the space
     species keeps track of where cells are by type
     food keeps track of the available nutrients in that space
-    links keeps track of where cells are by connection
     """
 
     map = []                    # map of space (1 = valid, 0 = invalid)
     species = []                # map of cell types
     food = []                   # map of nutrients at each location
-    links = []                  # map of cell connections
 
-    foodSums = []               # map of nutrients within reach of each location
-    biteR = 1                   # radius of bite
-    biteKern = np.ones((2*biteR+1,2*biteR+1))   # kernel defining reach of a bite
+    cellTypes = []              # list of cell types
+    cellList = []               # list of cells
+    nCells = 0                  # number of cells, = len(cellList)
 
     width = []                  # field width
     height = []                 # field height
-    speciesList = []            # species list
-    tissuesList = []            # tissues list
     mixRatios = []              # mix ratios
-
-    nCells = 0
-    cellsList = []
 
     def __init__(self, width, height, foodImg, mapImg, cellTypes):
         # initialize space map
@@ -66,14 +59,14 @@ class Dish:
         foodImg = cv2.resize(foodImg, (width, height))
         Dish.food = foodImg / 255.0 * 100
 
-        # build food within reach map from file
-        Dish.foodSums = sig.convolve(Dish.food.copy(), Dish.biteKern)
+        # save cell types to dish
+        Dish.cellTypes = cellTypes
+        Dish.cellList = []
+        Dish.nCells = 0
 
+        # map size
         Dish.width = width
         Dish.height = height
-
-        # save cell types to dish
-        Dish.speciesList = cellTypes
 
         # pull abundance ratios from cell types and normalize sum to 1
         Dish.mixRatios = normSum([x["abundance"] for x in cellTypes])
@@ -92,17 +85,17 @@ class Dish:
             seed = [idx[ind], idy[ind]]
 
             # pick species
-            species = np.random.choice(Dish.speciesList, p=Dish.mixRatios)
+            species = np.random.choice(Dish.cellTypes, p=Dish.mixRatios)
 
             # create seed cell
             cell = Cell(species, seed)          # initialize
-            Dish.cellsList.append(cell)         # add to list
+            Dish.cellList.append(cell)         # add to list
             Dish.nCells += 1                    # update count
 
             # populate cell map
             Dish.species[seed[1], seed[0]] = species["species"]
 
-        return Dish.cellsList
+        return Dish.cellList
 
 
 class Cell:
@@ -198,7 +191,7 @@ def kill(cell, Dish):
     Kills cell.
     """
     # remove cell from tissue
-    Dish.cellsList.remove(cell)
+    Dish.cellList.remove(cell)
     Dish.nCells += -1
 
     # remove old location from maps of cell types and connections
@@ -224,11 +217,6 @@ def feed(cell, Dish):
         bite = cell.metabolism * normSum(nutrients)
         # take bite out of food
         Dish.food[cell.y-1:cell.y+2, cell.x-1:cell.x+2] += -bite
-
-        # # take bite out of foodSums
-        # biteSums = sig.convolve(bite, Dish.biteKern)
-        # r = Dish.biteR
-        # Dish.foodSums[cell.y-r-1:cell.y+r+2, cell.x-r-1:cell.x+r+2] += -biteSums
 
         # add to cell's food
         cell.food += cell.metabolism
@@ -281,12 +269,11 @@ def divide(cell, Dish):
         new_loc = [cell.x + delta[1], cell.y + delta[0]]
 
         # create cell at new location
-        Dish.cellsList.append(
+        Dish.cellList.append(
             Cell(cell.type, (new_loc[0], new_loc[1]))
         )
 
         # update maps of cell types and connections
-        # Dish.links[new_loc[1], new_loc[0]] = self.index
         Dish.species[new_loc[1], new_loc[0]] = cell.species
 
         Dish.nCells += 1
@@ -326,11 +313,6 @@ def get_step(cell, Dish, forceMove):
 
     # best step otherwise
     else:
-        # # get nutrients available to neighbors
-        # nutrients = get_neighbors(Dish.foodSums,
-        #                          cell.x+Dish.biteR, cell.y+Dish.biteR,
-        #                          1, True)
-
         # get nutrients at neighbors
         nutrients = get_neighbors(Dish.food, cell.x, cell.y, 1, True)
 

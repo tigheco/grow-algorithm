@@ -112,8 +112,8 @@ def main(config):
                             np.zeros((config["height"], config["width"])))).astype("uint8"))
 
         # random shuffle cells
-        # env.cellsList.sort(key=lambda cell: (cell.species, cell.age))
-        # random.shuffle(env.cellsList)
+        # env.cellList.sort(key=lambda cell: (cell.species, cell.age))
+        # random.shuffle(env.cellList)
 
         progress = int(i*78/config["maxIter"])
         sys.stdout.write("\r"+"["+"-"*progress+" "*(77-progress)+"]")
