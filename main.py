@@ -10,22 +10,23 @@ email: tighe.costa@gmail.com
 import numpy as np
 import random
 import sys
+from datetime import datetime
 
 import cv2
 import imageio
 from PIL import Image
-from datetime import datetime
+
 import h5py
 
 import grow
 
 # -------------------------------------------------------------------------
 # user controls
-width = 200                                 # environment width
-height = 200                                # environment height
-maxIter = 50                                # timeout iterations
-seeds = int(width/10)                       # number of seed cells
-foodFile = "_food/foodMaps-00.png"          # food map file path
+width = 540                                 # environment width
+height = 540                                # environment height
+maxIter = 500                               # timeout iterations
+seeds = int(width/40)                       # number of seed cells
+foodFile = "_food/foodMaps-04.png"          # food map file path
 mapFile =  "_food/foodMaps-00.png"          # area map file path
 mixRatios = [5, 4, 7]                       # species probability ratios
 cellTypes = [                               # species properties
@@ -34,9 +35,9 @@ cellTypes = [                               # species properties
      "proliferation rate": 1,
      "metabolism": 10,
      "abundance": 1,
-     "food to divide": 10*4,
-     "food to move": 10,
-     "division recovery time": 10,
+     "food to divide": 10*8,
+     "food to move": 10*6,
+     "division recovery time": 8,
      "food to survive": 10*2,
      "endurance": 180,
     },
@@ -45,10 +46,10 @@ cellTypes = [                               # species properties
      "proliferation rate": 1,
      "metabolism": 15,
      "abundance": 1,
-     "food to move": 15,
-     "food to divide": 15*4,
-     "division recovery time": 10,
-     "food to survive": 15*2,
+     "food to move": 50,
+     "food to divide": 50*2,
+     "division recovery time": 2,
+     "food to survive": 50*2,
      "endurance": 160,
     },
     {
@@ -56,16 +57,21 @@ cellTypes = [                               # species properties
      "proliferation rate": 1,
      "metabolism": 20,
      "abundance": 1,
-     "food to move": 20,
-     "food to divide": 20*4,
-     "division recovery time": 10,
+     "food to move": 20*10,
+     "food to divide": 20*12,
+     "division recovery time": 12,
      "food to survive": 20*2,
      "endurance": 200,
     }
 ]
-outputSize = 112, 112
-outputPath = "_sims/"
+outputSize = 2160, 2160                     # rendered video size in px
+outputPath = "_sims/"                       # path to save data and videos
+timeWarpFactor = 2                          # render playback factor
 # -------------------------------------------------------------------------
+
+def load():
+
+    return None
 
 
 def initialize(width, height, cellTypes, seeds, foodFile, mapFile, mixRatios):
@@ -95,7 +101,7 @@ def draw(frames, fileName, dispSize):
 
 
 def save(dataList, labelList, outputPath, outputSize):
-    #
+    # timestamp file path
     timestamp = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
     path = outputPath + timestamp
 
@@ -137,7 +143,7 @@ def main():
 
     for i in range(1, maxIter+1):
 
-        chunks = np.array_split(np.array(cells), 2)
+        chunks = np.array_split(np.array(cells), timeWarpFactor)
 
         for chunk in chunks:
 

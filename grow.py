@@ -80,6 +80,7 @@ class Dish:
 
         return None
 
+
     def populate(self, quantity):
         valid_seeds = np.logical_and(Dish.map == 0, Dish.food > 0)
 
@@ -102,6 +103,7 @@ class Dish:
             Dish.species[seed[1], seed[0]] = species["species"]
 
         return Dish.cellsList
+
 
 class Cell:
     """
