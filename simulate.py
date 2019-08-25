@@ -53,8 +53,8 @@ def draw(frames, fileName, dispSize):
 
 def save(dataList, labelList, outputPath, config):
     # timestamp file path
-    timestamp = datetime.now().strftime("-%H_%M_%S")
-    path = outputPath + config["batchName"] + "-" + config["name"] + timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H_%M_%S ")
+    path = outputPath + timestamp + config["batchName"] + "-" + config["name"]
 
     # initialize file
     outfile = h5py.File(path + " data.h5", "w")
@@ -102,9 +102,13 @@ def main(config):
 
         for chunk in chunks:
 
+            # skip empty chunks
+            # this happens because numpy will return an empty chunk if there
+            # are fewer objects than chunks
             if not chunk.tolist():
                 continue
 
+            # grow non-empty chunks
             for n, cell in enumerate(chunk):
                 grow.update(cell, env)
                 t += 1
@@ -115,14 +119,16 @@ def main(config):
                 (np.maximum(env.food*255/100,
                             np.zeros((config["height"], config["width"])))).astype("uint8"))
 
-        # random shuffle cells
+        # # random shuffle cell update order
         # env.cellList.sort(key=lambda cell: (cell.species, cell.age))
         # random.shuffle(env.cellList)
 
+        # print growth progress to command line
         progress = int(i*76/config["maxIter"])
         sys.stdout.write("\r"+"  ["+"-"*progress+" "*(75-progress)+"]")
         sys.stdout.flush()
 
+        # stop simulation if all cells have died
         if (env.nCells == 0):
             framesSpecies.append(
                 (env.species*255/len(config["cellTypes"])).astype("uint8"))
@@ -133,11 +139,9 @@ def main(config):
             print("\n  All cells dead in %i iterations. Terminating simulation." % i)
             break
 
+        # stop simulation if maximum iterations completed
         if i == config["maxIter"]:
             print("\n  Completed %i iterations." % i)
-
-    endTime = datetime.now()
-    config["time"] = str(endTime - startTime)
 
     print("[3/3] Saving...")
 
@@ -146,6 +150,10 @@ def main(config):
          outputPath, config)
 
     print("  Complete.")
+
+    elapsedTime = str(datetime.now() - startTime)
+    config["time"] = elapsedTime
+    print("Simulation time: %s" % elapsedTime)
 
     return None
 

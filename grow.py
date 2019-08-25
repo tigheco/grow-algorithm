@@ -8,7 +8,7 @@ email: tighe.costa@gmail.com
 import numpy as np
 import scipy.signal as sig
 import scipy.stats as st
-import line_profiler
+# import line_profiler  # for diagnostics
 
 import cv2
 import random
@@ -46,6 +46,9 @@ class Dish:
     mixRatios = []              # mix ratios
 
     def __init__(self, width, height, foodImg, mapImg, cellTypes):
+        """
+        Initialize empty environment.
+        """
         # initialize space map
         mapImg = cv2.resize(mapImg, (width-2, height-2))
         mapImg[mapImg > 0] = 1
@@ -75,6 +78,9 @@ class Dish:
 
 
     def populate(self, config):
+        """
+        Add seed cells to environment.
+        """
         valid_seeds = np.logical_and(Dish.map == 0, Dish.food > 0)
 
         idy, idx = np.where(valid_seeds)
@@ -83,14 +89,16 @@ class Dish:
             # random seeding
             if config["seedPos"] == "random":
                 # randomly choose location
+                # TODO: make sure the same position cannot be selected twice
                 ind = np.random.randint(0, len(idx))
                 seed = [idx[ind], idy[ind]]
 
-                # pick species
+                # pick species p-randomly
                 cellType = np.random.choice(Dish.cellTypes, p=Dish.mixRatios)
             # fixed order center seeding
             elif config["seedPos"] == "center":
-                # get center location
+                # calculate centered location
+                # seeds are evenly spaced around center of map
                 r = config["seeds"] - 1
                 alpha = 2*math.pi/config["seeds"]
                 cx = int(Dish.width/2)
@@ -98,7 +106,7 @@ class Dish:
                 seed = [cx + round(r*math.cos(n*alpha)),
                         cy + round(r*math.sin(n*alpha))]
 
-                # get species
+                # pick species in order
                 cellType = Dish.cellTypes[n%len(Dish.cellTypes)]
 
             # create seed cell
@@ -123,7 +131,6 @@ class Cell:
     and know when theyre done
     """
 
-    # @profile
     def __init__(self, species, position):
         # type definitions
         self.type = species
@@ -132,7 +139,7 @@ class Cell:
         self.max_health = species["endurance"]
         self.health = species["endurance"]
         self.metabolism = species["metabolism"]
-        self.div_rate = species["proliferation rate"]
+        self.div_rate = int(species["proliferation rate"])
         self.div_thresh = species["food to divide"]
         self.div_recover = species["division recovery time"]
         self.move_thresh = species["food to move"]
@@ -296,7 +303,6 @@ def divide(cell, Dish):
 
     return None
 
-# @profile
 def get_step(cell, Dish, forceMove):
     """
     get_step looks through a cell's neighbors and returns the best step

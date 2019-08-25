@@ -15,7 +15,7 @@ import simulate
 
 def load(configFile, batchName):
     """
-    Import configuration file, loading cell types spreadsheet and specified
+    Imports configuration file, loading cell types spreadsheet and specified
     batch definitions spreadsheet.
     """
     # import excel workbook
@@ -32,18 +32,21 @@ def load(configFile, batchName):
 
 def build(cellTypeDefs, sim_params, batchName):
     """
-
+    Builds configuration file for the simulation.
     """
+    # initialize with high-level simulation parameters
     config = sim_params.to_dict()
 
+    # pull definitions of cell types
     cellTypes = []
     for name in config["cellTypeNames"].split(", "):
         cellTypes.append(cellTypeDefs[name].to_dict())
-
     config["cellTypes"] = cellTypes
 
+    # convert mixRatios string to list
     config["mixRatios"] = [int(x) for x in config["mixRatios"].split(", ")]
 
+    # convert outputSize string to tuple
     config["outputSize"] = tuple([int(x) for x in config["outputSize"].split(", ")])
 
     # add file name tags
@@ -54,27 +57,38 @@ def build(cellTypeDefs, sim_params, batchName):
 
 
 def save(configFile, batchName, batch):
+    """
+    Updates Excel config file to reflect which simulations have been run.
+    """
     # load excel worksheet for writing
     file = openpyxl.load_workbook(configFile)
     sheet = file[batchName]
 
+    # update completed flags for all simulations
     for colidx, sim_name in enumerate(batch, start=2):
         sheet.cell(row=2, column=colidx).value = batch[sim_name]["completed"]
 
+    # save out file
     file.save(configFile)
 
     return None
 
 
 def main(configFile, batchName):
+    """
+    Batch simulate using the GROW algorithm.
+    """
     # load configuration file
     cellTypes, batch = load(configFile, batchName)
 
+    # check if there are any incomplete simulations in batch
     if all(batch.loc["completed", :].values.tolist()):
         print("Simulation batch " + batchName + " already executed. Terminating program.")
         return None
 
+    # execute simulations
     for sim_name in batch:
+        # only execute incomplete simulations
         if batch[sim_name]["completed"] is False:
             print("\nGROW Simulation #" + sim_name)
 
@@ -83,9 +97,12 @@ def main(configFile, batchName):
 
             # run simulation
             simulate.main(config)
+
+            # flag simulation as completed
             batch[sim_name]["completed"] = True
 
-    # save(configFile, batchName, batch)
+        # update configuration file with completed flag
+        save(configFile, batchName, batch)
 
     return None
 
