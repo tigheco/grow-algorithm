@@ -99,7 +99,7 @@ def main(configFile, batchName):
             simulate.main(config)
 
             # flag simulation as completed
-            batch[sim_name]["completed"] = True
+            batch.loc["completed", sim_name] = True
 
         # update configuration file with completed flag
         save(configFile, batchName, batch)
