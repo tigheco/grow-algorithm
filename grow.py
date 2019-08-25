@@ -74,26 +74,40 @@ class Dish:
         return None
 
 
-    def populate(self, quantity):
+    def populate(self, config):
         valid_seeds = np.logical_and(Dish.map == 0, Dish.food > 0)
 
         idy, idx = np.where(valid_seeds)
 
-        for n in range(quantity):
-            # randomly choose location
-            ind = np.random.randint(0, len(idx))
-            seed = [idx[ind], idy[ind]]
+        for n in range(config["seeds"]):
+            # random seeding
+            if config["seedPos"] == "random":
+                # randomly choose location
+                ind = np.random.randint(0, len(idx))
+                seed = [idx[ind], idy[ind]]
 
-            # pick species
-            species = np.random.choice(Dish.cellTypes, p=Dish.mixRatios)
+                # pick species
+                cellType = np.random.choice(Dish.cellTypes, p=Dish.mixRatios)
+            # fixed order center seeding
+            elif config["seedPos"] == "center":
+                # get center location
+                r = config["seeds"] - 1
+                alpha = 2*math.pi/config["seeds"]
+                cx = int(Dish.width/2)
+                cy = int(Dish.height/2)
+                seed = [cx + round(r*math.cos(n*alpha)),
+                        cy + round(r*math.sin(n*alpha))]
+
+                # get species
+                cellType = Dish.cellTypes[n%len(Dish.cellTypes)]
 
             # create seed cell
-            cell = Cell(species, seed)          # initialize
-            Dish.cellList.append(cell)         # add to list
+            cell = Cell(cellType, seed)         # initialize
+            Dish.cellList.append(cell)          # add to list
             Dish.nCells += 1                    # update count
 
             # populate cell map
-            Dish.species[seed[1], seed[0]] = species["species"]
+            Dish.species[seed[1], seed[0]] = cellType["species"]
 
         return Dish.cellList
 

@@ -34,7 +34,7 @@ def initialize(config):
                     config["cellTypes"])
 
     # populate environment with seeds
-    cells = env.populate(config["seeds"])
+    cells = env.populate(config)
 
     return env, cells
 
@@ -46,18 +46,24 @@ def draw(frames, fileName, dispSize):
         outFrames.append(cv2.resize(frame, dispSize))
 
     # write frames to file
-    imageio.mimwrite(fileName, outFrames, macro_block_size=16, fps=30, quality=9)
+    imageio.mimwrite(fileName, outFrames, macro_block_size=8, fps=30, quality=9)
 
     return None
 
 
-def save(dataList, labelList, outputPath, outputSize):
+def save(dataList, labelList, outputPath, config):
     # timestamp file path
-    timestamp = datetime.now().strftime("%Y-%m-%d %H_%M_%S")
-    path = outputPath + timestamp
+    timestamp = datetime.now().strftime("-%H_%M_%S")
+    path = outputPath + config["batchName"] + "-" + config["name"] + timestamp
 
     # initialize file
     outfile = h5py.File(path + " data.h5", "w")
+
+    # save config to file
+    # converts each value in key, value pair to string
+    cfg = outfile.create_group("config")
+    for k, v in config.items():
+        cfg.create_dataset(k, data=str(v))
 
     # save each element in data as dataset with name from label
     for n, data in enumerate(dataList):
@@ -69,13 +75,13 @@ def save(dataList, labelList, outputPath, outputSize):
                                compression="gzip", compression_opts=4)
 
         # render dataset
-        draw(data, path + " " + label + ".mp4", outputSize)
+        draw(data, path + " " + label + ".mp4", config["outputSize"])
 
     return None
 
 
 def main(config):
-
+    startTime = datetime.now()
     np.random.seed()
 
     print("[1/3] Initializing...")
@@ -130,11 +136,14 @@ def main(config):
         if i == config["maxIter"]:
             print("\n  Completed %i iterations." % i)
 
+    endTime = datetime.now()
+    config["time"] = str(endTime - startTime)
+
     print("[3/3] Saving...")
 
     # save out data
     save([framesSpecies, framesFood], ["species", "nutrients"],
-         outputPath, config["outputSize"])
+         outputPath, config)
 
     print("  Complete.")
 

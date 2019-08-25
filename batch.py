@@ -30,10 +30,11 @@ def load(configFile, batchName):
     return cellTypes, batch
 
 
-def build(cellTypeDefs, sim_params):
-    sim = sim_params.to_dict()
+def build(cellTypeDefs, sim_params, batchName):
+    """
 
-    config = sim
+    """
+    config = sim_params.to_dict()
 
     cellTypes = []
     for name in config["cellTypeNames"].split(", "):
@@ -44,6 +45,10 @@ def build(cellTypeDefs, sim_params):
     config["mixRatios"] = [int(x) for x in config["mixRatios"].split(", ")]
 
     config["outputSize"] = tuple([int(x) for x in config["outputSize"].split(", ")])
+
+    # add file name tags
+    config["name"] = sim_params.name
+    config["batchName"] = batchName
 
     return config
 
@@ -71,18 +76,16 @@ def main(configFile, batchName):
 
     for sim_name in batch:
         if batch[sim_name]["completed"] is False:
-            print("GROW Simulation #" + sim_name)
+            print("\nGROW Simulation #" + sim_name)
 
             # build configuration dict for simulation
-            config = build(cellTypes, batch[sim_name])
+            config = build(cellTypes, batch[sim_name], batchName)
 
             # run simulation
             simulate.main(config)
             batch[sim_name]["completed"] = True
 
-            print()
-
-    save(configFile, batchName, batch)
+    # save(configFile, batchName, batch)
 
     return None
 
@@ -106,5 +109,5 @@ if __name__ == "__main__":
     configFile = args.config            # configuraiton file
     batchName = args.batch             # batch definitions
 
-    print("GROW: Biologically Inspired Cellular Growth Algorithm\n")
+    print("GROW: Biologically Inspired Cellular Growth Algorithm")
     main(configFile, batchName)
