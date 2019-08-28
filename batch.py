@@ -41,6 +41,10 @@ def build(cellTypeDefs, sim_params, batchName):
     cellTypes = []
     for name in config["cellTypeNames"].split(", "):
         cellTypes.append(cellTypeDefs[name].to_dict())
+
+        if config["death"] is False:
+            cellTypes[-1]["endurance"] = float("inf")
+
     config["cellTypes"] = cellTypes
 
     # convert mixRatios string to list
@@ -102,24 +106,21 @@ def main(configFile, batchName):
             batch.loc["completed", sim_name] = True
 
         # update configuration file with completed flag
-        save(configFile, batchName, batch)
+        # save(configFile, batchName, batch)
 
     return None
 
 
 if __name__ == "__main__":
     # set up command line argument parser
-    parser = argparse.ArgumentParser(
-        usage="%(prog)s [-h] [-c config] -b batch"
-    )
+    parser = argparse.ArgumentParser()
 
     # configure input arguments
+    parser.add_argument("batch", type=str,
+                        help="batch worksheet name")
     parser.add_argument("-c", "--config", metavar="", type=str,
-                        help="path to configuraiton file",
+                        help="configuraiton file path",
                         default="config.xlsx")
-    parser.add_argument("-b", "--batch", metavar="", type=str,
-                        help="name of batch worksheet",
-                        required=True)
 
     # process input arguments
     args = parser.parse_args()

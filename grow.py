@@ -64,6 +64,9 @@ class Dish:
 
         # save cell types to dish
         Dish.cellTypes = cellTypes
+        # update species indentifier relative to list
+        for n, type in enumerate(cellTypes, start=1):
+            type["species"] = n
         Dish.cellList = []
         Dish.nCells = 0
 
@@ -182,6 +185,7 @@ def update(cell, Dish):
         # action updates
         # continue to next cell if done dividing
         if cell.dividing is True:
+            # print("cell.dividing = True")
             continue
         # let the cell rest if it needs to
         elif cell.resting:
@@ -196,10 +200,12 @@ def update(cell, Dish):
         else:
             # divide if possible
             if cell.food > cell.div_thresh * random.uniform(0.8, 1.2):
+                # print("divide(cell,Dish)")
                 divide(cell, Dish)
 
             # otherwise consider moving
             elif cell.food > cell.move_thresh * random.uniform(0.8, 1.2):
+                # print("move(cell,Dish)")
                 move(cell, Dish)
 
         cell.age += 1       # increment age counter
